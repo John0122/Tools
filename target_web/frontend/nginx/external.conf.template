@@ -1,0 +1,19 @@
+# 独立主机名代表受控外站，只有样例资源与协议接口对外提供。
+server {
+    listen 8080;
+    listen [::]:8080;
+    listen 8443 ssl;
+    listen [::]:8443 ssl;
+    server_name __LAB_EXTERNAL_HOST__;
+    server_tokens off;
+    # 外站入口与目录跳转不得暴露 8080/8443 容器端口。
+    absolute_redirect off;
+    ssl_certificate /etc/nginx/certs/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    root /usr/share/nginx/html;
+    client_max_body_size 64k;
+    include /etc/nginx/lab-locations.conf;
+    location = / { return 302 /fixtures/landing.html; }
+    location / { return 404; }
+}

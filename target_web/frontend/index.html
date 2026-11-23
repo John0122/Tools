@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>WEB 靶机 · TARGET WEB</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%2224%22%20height=%2224%22%20viewBox=%220%200%2024%2024%22%20fill=%22none%22%20stroke=%22%230d8e91%22%20stroke-width=%222%22%20stroke-linecap=%22round%22%20stroke-linejoin=%22round%22%20class=%22icon%20icon-tabler%20icons-tabler-outline%20icon-tabler-brand-feedly%22%3E%3Cpath%20stroke=%22none%22%20d=%22M0%200h24v24H0z%22%20fill=%22none%22%20/%3E%3Cpath%20d=%22M7.833%2012.278l4.445%20-4.445%22%20/%3E%3Cpath%20d=%22M10.055%2014.5l2.223%20-2.222%22%20/%3E%3Cpath%20d=%22M12.278%2016.722l.555%20-.555%22%20/%3E%3Cpath%20d=%22M19.828%2014.828a4%204%200%200%200%200%20-5.656l-5%20-5a4%204%200%200%200%20-5.656%200l-5%205a4%204%200%200%200%200%205.656l6.171%206.172h3.314l6.171%20-6.172%22%20/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="/css/style.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#api-list">跳到接口列表</a>
+    <main>
+      <header class="page-header">
+        <div>
+          <div class="label">WEB 靶机 / HTTP 请求测试</div>
+          <h1>TARGET WEB</h1>
+          <p class="intro">选择一个接口，发送请求，查看真实响应。</p>
+        </div>
+        <nav class="protocols" aria-label="访问协议">
+          <a id="http-link" href="http://localhost:38080/">HTTP <code>:38080</code></a>
+          <a id="https-link" href="https://localhost:38443/">HTTPS <code>:38443</code></a>
+        </nav>
+      </header>
+      <div class="connection"><span class="connection-dot" aria-hidden="true"></span>当前地址 <code id="current-url">当前浏览器地址</code></div>
+      <nav class="tool-entry" aria-label="其他测试工具"><a href="/links/">外链检测 →</a><span>12 类页面 · HTML 技术特征 · 暗链与死链样例</span></nav>
+
+      <div class="console">
+        <section class="panel catalog" aria-labelledby="catalog-title">
+          <div class="panel-heading">
+            <div><h2 id="catalog-title">接口列表</h2><p>点击一行即可发送请求</p></div>
+            <button id="reload-catalog" class="text-button" type="button" disabled>刷新列表</button>
+          </div>
+          <p id="catalog-status" class="catalog-status" role="status">正在加载接口…</p>
+          <div id="api-list" class="api-list" tabindex="-1" aria-busy="true"></div>
+          <noscript><p class="catalog-status">请启用 JavaScript，以加载接口列表并发送请求。</p></noscript>
+          <p class="catalog-note">标注“后端代发”的接口会由 Go 服务发出真实请求。</p>
+        </section>
+
+        <section id="response-panel" class="panel response" aria-labelledby="response-title" tabindex="-1">
+          <div class="panel-heading">
+            <div><h2 id="response-title">请求与响应</h2><p id="request-summary">等待选择接口</p></div>
+            <span id="response-badge" class="status-badge" data-tone="neutral">未发送</span>
+          </div>
+          <div class="response-content">
+            <p id="request-route" class="request-route">选择列表中的接口后，这里会显示请求方式与返回结果。</p>
+            <p id="request-status" class="request-status" role="status" aria-atomic="true">尚未发送请求。</p>
+            <div id="response-details" hidden>
+              <dl class="response-meta">
+                <div><dt>响应状态</dt><dd id="response-code">—</dd></div>
+                <div><dt>请求耗时</dt><dd id="response-time">—</dd></div>
+              </dl>
+              <h3>响应头</h3>
+              <pre id="response-headers" tabindex="0" aria-label="响应头"></pre>
+              <h3>响应正文</h3>
+              <pre id="response-body" tabindex="0" aria-label="响应正文"></pre>
+            </div>
+            <p class="response-help">HEAD 只返回响应头。CONNECT 返回 501，表示仅展示方法说明，不建立代理隧道。</p>
+            <a class="back-to-list" href="#api-list">返回接口列表 ↑</a>
+          </div>
+        </section>
+      </div>
+      <footer>
+        <p><a href="/healthz">健康检查</a><span aria-hidden="true"> · </span><a href="/api">查看 JSON 接口目录</a></p>
+        <p>HTTPS 使用本地 IP 自签名证书，首次访问可能出现证书信任提示。</p>
+      </footer>
+    </main>
+    <script src="/js/app.js" defer></script>
+  </body>
+</html>

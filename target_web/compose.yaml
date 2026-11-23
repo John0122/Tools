@@ -1,0 +1,56 @@
+name: target-web
+
+services:
+  frontend:
+    image: target-web-frontend:${TARGET_WEB_IMAGE_TAG:-local}
+    pull_policy: never
+    environment:
+      TARGET_WEB_EXTERNAL_HOST: ${TARGET_WEB_EXTERNAL_HOST:-pz-target-web.com}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "38080:8080"
+      - "38443:8443"
+    volumes:
+      # 目录只读挂载；使用启动脚本先生成证书，避免挂载空目录后反复重启。
+      - type: bind
+        source: ./certs
+        target: /etc/nginx/certs
+        read_only: true
+        bind:
+          create_host_path: false
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  backend:
+    image: target-web-backend:${TARGET_WEB_IMAGE_TAG:-local}
+    pull_policy: never
+    environment:
+      TARGET_WEB_EXTERNAL_HOST: ${TARGET_WEB_EXTERNAL_HOST:-pz-target-web.com}
+      TARGET_WEB_HOST: ${TARGET_WEB_HOST:-127.0.0.1}
+    restart: unless-stopped
+    # 仅供 Compose 网络中的前端访问，不发布宿主机端口。
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "/server", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

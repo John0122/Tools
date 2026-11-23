@@ -1,0 +1,4 @@
+/* 仅作用于 CSS 样例区域，避免改变应用主题。 */
+@import url("https://__LAB_EXTERNAL_HOST__:38443/fixtures/imported.css");
+.fixture-css { border: 2px dashed var(--accent); padding: 16px; }
+.fixture-background { height: 180px; background: url("https://__LAB_EXTERNAL_HOST__:38443/fixtures/images/sample.svg") center / contain no-repeat; }

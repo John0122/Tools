@@ -1,0 +1,9 @@
+/* 各格式独立加载，仅用于演示段落。 */
+@font-face { font-family: "Lab-woff"; src: url("https://__LAB_EXTERNAL_HOST__:38443/fixtures/fonts/SourceCodePro-Regular.woff") format("woff"); font-display: swap; }
+.fixture-font-woff { font-family: "Lab-woff", monospace; font-size: 20px; }
+@font-face { font-family: "Lab-woff2"; src: url("https://__LAB_EXTERNAL_HOST__:38443/fixtures/fonts/SourceCodePro-Regular.woff2") format("woff2"); font-display: swap; }
+.fixture-font-woff2 { font-family: "Lab-woff2", monospace; font-size: 20px; }
+@font-face { font-family: "Lab-ttf"; src: url("https://__LAB_EXTERNAL_HOST__:38443/fixtures/fonts/SourceCodePro-Regular.ttf") format("truetype"); font-display: swap; }
+.fixture-font-ttf { font-family: "Lab-ttf", monospace; font-size: 20px; }
+@font-face { font-family: "Lab-otf"; src: url("https://__LAB_EXTERNAL_HOST__:38443/fixtures/fonts/SourceCodePro-Regular.otf") format("opentype"); font-display: swap; }
+.fixture-font-otf { font-family: "Lab-otf", monospace; font-size: 20px; }

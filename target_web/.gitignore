@@ -1,0 +1,9 @@
+# 运行时证书、私钥和测试缓存不进入版本控制。
+certs/
+__pycache__/
+
+# 本机编译使用的临时产物上下文
+build/
+
+# 这是文件下载页面的固定演示数据，需随源码提供；其余编译产物继续忽略。
+!frontend/fixtures/downloads/sample.exe

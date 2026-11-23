@@ -1,0 +1,74 @@
+/* 外链目录和分类页复用主站 token；隐藏样例仅在明确标记的演示容器中生效。 */
+.link-lab { scrollbar-color: var(--muted) var(--surface-subtle); }
+.lab-breadcrumb { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; font-size: 13px; color: var(--muted); }
+.lab-header h1 { font-size: clamp(28px, 4vw, 40px); }
+.lab-origin { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 24px 0; padding: 12px 16px; background: var(--surface-subtle); border: 1px solid var(--border); border-radius: 6px; font-size: 12px; color: var(--muted); }
+.lab-layout { display: grid; grid-template-columns: 205px minmax(0, 1fr); gap: 24px; align-items: start; }
+.lab-sidebar { position: sticky; top: 24px; }
+.lab-sidebar h2 { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+.lab-sidebar ul { list-style: none; padding: 0; margin: 0; }
+.lab-sidebar a { display: block; padding: 8px 12px; border-left: 3px solid transparent; text-decoration: none; font-size: 13px; color: var(--muted); }
+.lab-sidebar a:hover { background: var(--surface-subtle); color: var(--accent); }
+.lab-sidebar a[aria-current="page"] { color: var(--accent); background: var(--selected); border-color: var(--accent); }
+.lab-content { min-width: 0; }
+.lab-categories { margin: 20px 0 0; padding: 0; list-style: none; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.lab-categories li + li { border-top: 1px solid var(--border); }
+.lab-category { display: flex; justify-content: space-between; gap: 24px; padding: 20px 24px; text-decoration: none; color: var(--text); }
+.lab-category:hover, .lab-category:focus-visible { background: var(--selected); }
+.lab-category:focus-visible { outline-offset: -4px; }
+.lab-category-description { display: block; margin-top: 5px; font-size: 13px; color: var(--muted); }
+.lab-category-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; white-space: nowrap; font-size: 12px; color: var(--muted); }
+.lab-priority { padding: 3px 8px; border: 1px solid var(--border); border-radius: 5px; background: var(--surface-subtle); color: var(--muted); font: 12px/1.6 var(--mono); white-space: nowrap; }
+.lab-section { padding: 24px; margin-bottom: 24px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); scroll-margin-top: 20px; }
+.lab-section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.lab-feature { margin: 8px 0 20px; color: var(--muted); font-size: 12px; }
+.lab-demo { font-size: 14px; }
+.lab-demo p + p { margin-top: 12px; }
+.lab-demo ul { padding-left: 20px; margin: 0; }
+.lab-demo li + li { margin-top: 10px; }
+.lab-note { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; }
+.lab-setup { padding: 20px 24px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.lab-setup p { margin-top: 12px; font-size: 13px; color: var(--muted); }
+.link-lab summary { cursor: pointer; color: var(--accent); }
+.link-lab details { margin-top: 16px; }
+.lab-setup:first-child { margin-top: 0; }
+.lab-button { border: 1px solid var(--accent); background: var(--selected); color: var(--accent); padding: 9px 14px; min-height: 42px; border-radius: 6px; font-size: 13px; margin: 12px 0; }
+.lab-button:hover:enabled { background: var(--surface-subtle); }
+.lab-button:disabled { cursor: default; }
+.lab-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.lab-result { min-height: 88px; margin-top: 12px; }
+.lab-result[data-tone="error"], [data-form-status][data-tone="error"] { color: var(--error); }
+.lab-result[data-tone="success"] { border-left: 3px solid var(--success); }
+.lab-demo label { display: block; margin: 16px 0 6px; color: var(--muted); font-size: 13px; }
+.lab-demo input { display: block; width: 100%; max-width: 520px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-subtle); color: var(--text); font: inherit; }
+.lab-demo input[aria-invalid="true"] { border-color: var(--error); }
+.link-lab :where(input, summary):focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
+.lab-frame { display: block; width: 100%; height: 300px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-subtle); }
+.lab-frame-small { height: 180px; margin-top: 16px; }
+.lab-image-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.lab-image-grid figure { margin: 0; }
+.lab-image-grid figcaption { color: var(--muted); margin-top: 8px; font: 12px/1.6 var(--mono); }
+.lab-demo img, .lab-demo video { display: block; max-width: 100%; height: auto; object-fit: contain; border-radius: 6px; }
+.lab-demo audio { display: block; width: 100%; max-width: 480px; }
+.lab-demo .lab-broken-image { min-height: 100px; border: 1px dashed var(--warning); padding: 12px; }
+.lab-dynamic-result { min-height: 48px; padding-top: 12px; }
+.lab-two-columns { columns: 2; column-gap: 24px; }
+.lab-two-columns li { break-inside: avoid; }
+/* 以下三类是用户要求的检测样例，不能用于正常导航或交互组件。 */
+.lab-hidden-display { display: none; }
+.lab-hidden-opacity { position: absolute; opacity: 0; width: 1px; height: 1px; overflow: hidden; pointer-events: none; }
+.lab-hidden-offscreen { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+@media (max-width: 800px) {
+  .lab-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .lab-sidebar { position: static; }
+  .lab-sidebar ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lab-sidebar a { padding: 7px 10px; font-size: 12px; }
+  .lab-section, .lab-setup { padding: 20px; }
+  .lab-category { padding: 16px 20px; gap: 12px; }
+  .lab-category-meta { font-size: 11px; }
+  .lab-category-description { font-size: 12px; }
+  .lab-image-grid { grid-template-columns: minmax(0, 1fr); }
+  .lab-two-columns { columns: 1; }
+  .lab-frame { height: 250px; }
+  .lab-frame-small { height: 180px; }
+}
