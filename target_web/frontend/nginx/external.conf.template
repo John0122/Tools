@@ -1,10 +1,10 @@
-# 域名入口提供完整靶机页面；从 IP 入口检测时，同一域名仍作为站外样例目标。
+# 所有配置域名提供完整靶机页面；第一个域名用于从 IP 入口检测站外样例。
 server {
     listen 8080;
     listen [::]:8080;
     listen 8443 ssl;
     listen [::]:8443 ssl;
-    server_name __LAB_EXTERNAL_HOST__;
+    server_name __LAB_EXTERNAL_HOSTS__;
     server_tokens off;
     # 外站入口与目录跳转不得暴露 8080/8443 容器端口。
     absolute_redirect off;

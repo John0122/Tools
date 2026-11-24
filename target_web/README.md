@@ -39,7 +39,7 @@ target_web/
 │   ├── go.mod
 │   └── Dockerfile             # scratch 运行镜像，只复制二进制及公共 CA
 ├── scripts/generate-cert.sh
-├── tests/                    # 证书生命周期与 IP 入口校验的单元测试
+├── tests/                    # 证书生命周期、域名列表与 IP 入口校验的单元测试
 ├── certs/                     # 本地生成，不入库、不进入构建上下文
 ├── DESIGN.md                  # 页面设计约定
 ├── build.sh                   # 本机编译、产物整理与双镜像构建
@@ -71,7 +71,7 @@ cd target_web
 
 ```bash
 export TARGET_WEB_HOST=192.168.5.10
-export TARGET_WEB_EXTERNAL_HOST=www.pz-target-web.com
+export TARGET_WEB_EXTERNAL_HOSTS=www.pz-target-web.com,www.pz-target-web-1.com,www.pz-target-web-2.com
 ./build.sh
 ./target_web.sh cert --host "$TARGET_WEB_HOST"
 docker compose up -d --no-build --force-recreate --remove-orphans --wait
@@ -108,7 +108,7 @@ Compose 只负责运行已构建镜像，设置 `pull_policy: never`，不从仓
 
 ## 离线打包与部署
 
-`package.sh` 在构建机器生成离线压缩包，`deploy.sh` 在目标机器解压目录执行。运行包包含前后端两个镜像、Compose 配置、管理脚本、证书生成脚本、IP 校验器和本说明；不包含 Go/前端源码、开发工具链、缓存及已有证书或私钥。静态页面及演示资源已包含在前端镜像中。
+`package.sh` 在构建机器生成离线压缩包，`deploy.sh` 在目标机器解压目录执行。运行包包含前后端两个镜像、Compose 配置、管理脚本、证书生成脚本、IP 与域名列表校验器和本说明；不包含 Go/前端源码、开发工具链、缓存及已有证书或私钥。静态页面及演示资源已包含在前端镜像中。
 
 构建机器需要 Docker、Go 和 tar，以及 `sha256sum` 或 `shasum`。默认标签为 `local`，架构默认为 Docker 服务架构；给不同架构的目标机器部署时需显式选择：
 
@@ -141,7 +141,7 @@ cd target-web-local-linux-amd64
 
 部署先校验包内文件、元数据、目标架构及 Compose 配置，校验通过才导入镜像；导入后检查镜像 ID，随后调用 `target_web.sh up --no-build`。本站 IP 自动检测失败时使用 `--host`；未配置局域网链接时提示输入另一台设备的私有 IPv4，回车可跳过。证书在解压目录的 `certs/` 生成或复用，两个容器健康后输出 HTTP 38080 和 HTTPS 38443 入口。
 
-部署镜像标签固定取包内元数据。包内直接执行 `target_web.sh up` 也会沿用该标签并跳过构建；首次部署仍须使用 `deploy.sh` 导入镜像。环境变量 `TARGET_WEB_EXTERNAL_HOST` 和 `TARGET_WEB_LAN_IP_ORIGIN` 的用法与源码启动一致；运行脚本不保存这些配置，后续部署需再次传入。部署不修改系统 DNS/hosts、代理或证书信任，域名解析按下文配置。
+部署镜像标签固定取包内元数据。包内直接执行 `target_web.sh up` 也会沿用该标签并跳过构建；首次部署仍须使用 `deploy.sh` 导入镜像。环境变量 `TARGET_WEB_EXTERNAL_HOSTS` 和 `TARGET_WEB_LAN_IP_ORIGIN` 的用法与源码启动一致；运行脚本不保存这些配置，后续部署需再次传入。部署不修改系统 DNS/hosts、代理或证书信任，域名解析按下文配置。
 
 ```bash
 ./target_web.sh status
@@ -243,27 +243,42 @@ curl --noproxy '*' --cacert certs/fullchain.pem -X PATCH https://127.0.0.1:38443
 
 图片、字体、媒体和下载均为实际文件；`sample.exe` 是仅打印说明的 Windows 程序。M3U8 引用有效 MP3 Packed Audio 分片，播放需要原生支持 HLS 的浏览器。预置 404/410 会出现在浏览器网络面板和控制台中，这是正常测试数据。
 
-### 受控外站配置
+### 多域名与受控外站配置
 
-样例域名默认 `www.pz-target-web.com`，与主站 IP 属于不同主机名/来源，复用同一个前端容器、IP 和端口；无需第三个镜像。访问 `https://www.pz-target-web.com:38443/` 直接打开完整靶机首页，支持 `/links/` 分类页、静态资源、同源 `/api`、`/lab/` 和 `/healthz`；原有 `/fixtures/landing.html` 等演示地址继续可用。每个浏览器或扫描器所在设备都需配置 DNS/hosts，例如部署 IP 为 `192.168.5.10` 时：
+同一个前端服务支持多个域名，复用同一个容器、IP、HTTP 38080 与 HTTPS 38443 端口。任一配置域名都直接提供完整靶机首页、`/links/` 分类页、静态资源、同源 `/api`、`/lab/` 和 `/healthz`，保留浏览器访问时使用的域名；原有 `/fixtures/landing.html` 等演示地址继续可用。
 
-```text
-192.168.5.10 www.pz-target-web.com
+通过 `TARGET_WEB_EXTERNAL_HOSTS` 设置逗号分隔的域名列表：
+
+```bash
+TARGET_WEB_EXTERNAL_HOSTS=www.pz-target-web.com,www.pz-target-web-1.com,www.pz-target-web-2.com \
+  ./target_web.sh up --host 192.168.5.10
+
+# 离线包使用相同配置
+TARGET_WEB_EXTERNAL_HOSTS=www.pz-target-web.com,www.pz-target-web-1.com,www.pz-target-web-2.com \
+  ./deploy.sh --host 192.168.5.10
 ```
 
-部署脚本不修改系统 hosts 或证书信任。自签名证书同时覆盖主站 IP 和样例域名，浏览器需要允许或信任两个入口使用的证书，HTTPS 子资源才能加载。可先访问 `https://www.pz-target-web.com:38443/` 检查首页。页面引用 HTTPS 样例资源；HTTP 页面可测试 WS 38080 和 WSS 38443，HTTPS 页面只启用 WSS，避免混合内容阻止连接。
+域名统一使用 `TARGET_WEB_EXTERNAL_HOSTS` 配置，支持单个域名或逗号分隔的多个域名；列表未设置或为空时默认使用 `www.pz-target-web.com,www.pz-target-web-1.com,www.pz-target-web-2.com`。每一项须为合法的小写 DNS 名称，不填协议、端口、路径、通配符或 IP；允许逗号两侧的空格和制表符，重复域名保留首次出现的位置，空项、连续/末尾逗号及换行会被拒绝。非法列表不会回退到默认域名。
 
-外链清单的站内/站外标记以 IP 入口为对照：从 IP 访问时，样例域名用于站外测试；从域名访问时，指向相同域名的资源属于站内。需要核对清单中的站外样例时，从 `https://<靶机IP>:38443/links/` 开始扫描。两个入口都保留真实 404/410，不将缺失资源回退到首页。
+第一个域名作为外链演示资源和固定站外重定向的目标，所有域名共享同一份页面与样例清单。各域名都纳入证书 SAN，以及后端 CORS/WebSocket 的来源白名单。每个浏览器或扫描器所在设备都需配置所有域名的 DNS/hosts，例如部署 IP 为 `192.168.5.10` 时：
+
+```text
+192.168.5.10 www.pz-target-web.com www.pz-target-web-1.com www.pz-target-web-2.com
+```
+
+部署脚本不修改系统 hosts 或证书信任。自签名证书同时覆盖主站 IP 和全部配置域名，浏览器需要允许或信任相应入口使用的证书，HTTPS 子资源才能加载。可分别访问 `https://www.pz-target-web.com:38443/` 、`https://www.pz-target-web-1.com:38443/` 和 `https://www.pz-target-web-2.com:38443/` 检查首页。页面引用第一个域名的 HTTPS 样例资源；HTTP 页面可测试 WS 38080 和 WSS 38443，HTTPS 页面只启用 WSS，避免混合内容阻止连接。
+
+外链清单的站内/站外标记以 IP 入口为对照：从 IP 访问时，第一个域名用于站外测试；从该域名访问时，相同域名的资源属于站内；从其他配置域名访问时，指向第一个域名的资源仍属于跨来源请求。需要核对清单中的站外样例时，从 `https://<靶机IP>:38443/links/` 开始扫描。所有入口都保留真实 404/410，不将缺失资源回退到首页。
 
 使用系统或浏览器代理时，将部署 IP 和外站域名加入直连列表；hosts 映射不能保证代理服务器也能解析该域名。命令行示例使用 `--noproxy '*'` 直接访问本地靶机。
 
-可选自定义外站主机名（合法的小写 DNS 名称，不填协议或端口）：
+只使用一个域名时，直接填写一个名称：
 
 ```bash
-TARGET_WEB_EXTERNAL_HOST=resources.lab.test ./target_web.sh up --host 192.168.5.10
+TARGET_WEB_EXTERNAL_HOSTS=resources.lab.test ./target_web.sh up --host 192.168.5.10
 ```
 
-域名变化会更新证书、前端运行产物与后端允许来源；也需同步各访问设备的解析设置。`TARGET_WEB_HOST` 由 `up --host` 或 IP 自动检测传入前端 IP 样例及后端来源配置。无需改 hosts 的命令行检查：
+域名配置变化后，使用相同环境变量重新执行 `up`（离线包也可重新执行 `deploy.sh`），更新证书检查、前端运行产物与后端允许来源；也需同步各访问设备的解析设置。运行脚本不保存域名列表，后续部署需再次传入。`TARGET_WEB_HOST` 由 `up --host` 或 IP 自动检测传入前端 IP 样例及后端来源配置。无需改 hosts 的命令行检查：
 
 ```bash
 curl --noproxy '*' --cacert certs/fullchain.pem \
@@ -307,7 +322,7 @@ TARGET_WEB_LAN_IP_ORIGIN=https://192.168.5.20:38443 \
 
 入口环境变量接受 `http(s)://IPv4[:端口]` 和可选末尾 `/`，不接受域名、IPv6、认证信息、路径、查询参数或片段；端口范围为 1–65535，不使用前导零。`--lan-ip` 优先于入口环境变量；已有显式配置时不再提示。无交互终端且未配置时直接跳过，不等待输入；页面显示说明，清单保留记录但目标为 null，不生成空链接。启动脚本在生成证书和构建前校验配置，容器入口再次校验；直接运行 Compose 时由容器拒绝错误配置。局域网链接访问目标根路径并在新标签页打开，不自动探测设备。
 
-启动时将本站 IP 和局域网入口写入 HTML 与 `cases.json`，无需执行 JavaScript 即可发现链接。设备地址变化后重新执行 `up` 并输入新 IP，或通过参数/环境变量传入；已构建新版本镜像时可添加 `--no-build`。直接运行 Compose 没有交互提示，须提供 `TARGET_WEB_HOST` 和需要的 `TARGET_WEB_LAN_IP_ORIGIN`；本站地址省略时默认为 `127.0.0.1`，只适用于同机访问。IP 配置不替代其他分类使用的 `TARGET_WEB_EXTERNAL_HOST`。
+启动时将本站 IP 和局域网入口写入 HTML 与 `cases.json`，无需执行 JavaScript 即可发现链接。设备地址变化后重新执行 `up` 并输入新 IP，或通过参数/环境变量传入；已构建新版本镜像时可添加 `--no-build`。直接运行 Compose 没有交互提示，须提供 `TARGET_WEB_HOST` 和需要的 `TARGET_WEB_LAN_IP_ORIGIN`；本站地址省略时默认为 `127.0.0.1`，只适用于同机访问。IP 配置不替代其他分类使用的 `TARGET_WEB_EXTERNAL_HOSTS` 域名列表。
 
 ### 后端样例契约
 
@@ -320,7 +335,7 @@ TARGET_WEB_LAN_IP_ORIGIN=https://192.168.5.20:38443 \
 | `/lab/status/404`、`/lab/status/410` | GET/HEAD | 对应真实错误状态，附 X-Lab-Case |
 | `/lab/redirect/{code}/{scope}/{target}` | GET/HEAD | code 为 301/302/303/307/308，scope 为 internal/external，target 为 ok/missing；只跳转到固定演示目标 |
 
-以上已知路径提供 OPTIONS；不支持的方法返回 405，未知路径返回 404。JSON 与表单请求体上限 16 KiB；只接收演示文本，不接收文件上传。`/lab/` 允许的来源为配置主站 IP、localhost/回环和外站主机名对应的 HTTP 38080 和 HTTPS 38443 入口，未配置来源与 `Origin: null` 返回 403。公开静态演示资源允许无凭据跨域；媒体支持 Range，文件返回正确类型及 Content-Disposition。重定向不接受任意 URL。
+以上已知路径提供 OPTIONS；不支持的方法返回 405，未知路径返回 404。JSON 与表单请求体上限 16 KiB；只接收演示文本，不接收文件上传。`/lab/` 允许的来源为配置主站 IP、localhost/回环和全部配置域名对应的 HTTP 38080 和 HTTPS 38443 入口，未配置来源与 `Origin: null` 返回 403，不放宽协议或端口。公开静态演示资源允许无凭据跨域；媒体支持 Range，文件返回正确类型及 Content-Disposition。重定向不接受任意 URL。
 
 协议依赖锁定为 `github.com/graphql-go/graphql v0.8.1`、`github.com/coder/websocket v1.8.15`，没有前端第三方运行依赖。媒体、照片与字体的来源、独立许可证见 [资源说明](frontend/fixtures/SOURCES.md)。
 
@@ -340,9 +355,9 @@ docker compose up -d --no-build --no-deps --wait frontend
 
 ## HTTPS 证书
 
-生成方式参考 `FutureConsole/deploy/lib/cert.sh` 的 `gen_self_signed`：ECDSA P-256 显式命名曲线、有效期 825 天；SAN 包含指定宿主机 IPv4、`localhost`、`127.0.0.1` 和 `TARGET_WEB_EXTERNAL_HOST`；设置 `CA:FALSE`、`digitalSignature`、`serverAuth`。
+生成方式参考 `FutureConsole/deploy/lib/cert.sh` 的 `gen_self_signed`：ECDSA P-256 显式命名曲线、有效期 825 天；SAN 包含指定宿主机 IPv4、`localhost`、`127.0.0.1` 和 `TARGET_WEB_EXTERNAL_HOSTS` 中的全部域名（列表未设置或为空时使用默认域名）；设置 `CA:FALSE`、`digitalSignature`、`serverAuth`。
 
-证书文件为 `certs/fullchain.pem` 和 `certs/privkey.pem`。私钥权限 600，仅只读挂载到前端容器 `/etc/nginx/certs`，不进入任一镜像。Nginx 在启动时加载并校验证书。每次 `up` 检查证书，缺失、损坏、密钥不配对、IP/外站主机名不匹配或有效期不足 30 天时重新生成；否则复用。`up` 重建容器以载入证书，`down` 保留证书。
+证书文件为 `certs/fullchain.pem` 和 `certs/privkey.pem`。私钥权限 600，仅只读挂载到前端容器 `/etc/nginx/certs`，不进入任一镜像。Nginx 在启动时加载并校验证书。每次 `up` 检查证书，缺失、损坏、密钥不配对、IP 或任一配置域名不匹配、有效期不足 30 天时重新生成；否则复用。增加域名后如旧证书未覆盖该域名，将自动重签。`up` 重建容器以载入证书，`down` 保留证书。
 
 自签名证书默认不受浏览器信任。使用 `--cacert` 可校验证书和访问地址：
 

@@ -9,8 +9,8 @@ import (
 
 // 实际 HTTP 响应验证：错误状态、输入拒绝和跳转目标必须对扫描器可见。
 func TestLabHTTP(t *testing.T) {
-	// 测试配置沿用部署使用的完整外站主机名。
-	h, err := NewHandler(Config{ExternalHost: "www.pz-target-web.com", PrimaryHost: "192.168.5.30"})
+	// 单个域名也通过统一列表配置传入。
+	h, err := NewHandler(Config{ExternalHosts: "www.pz-target-web.com", PrimaryHost: "192.168.5.30"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestLabHTTP(t *testing.T) {
 }
 
 func TestLabRedirectAndPreflight(t *testing.T) {
-	h, _ := NewHandler(Config{ExternalHost: "www.pz-target-web.com", PrimaryHost: "127.0.0.1"})
+	h, _ := NewHandler(Config{ExternalHosts: "www.pz-target-web.com", PrimaryHost: "127.0.0.1"})
 	defer h.Close()
 	for _, code := range []string{"301", "302", "303", "307", "308"} {
 		w := httptest.NewRecorder()
@@ -100,12 +100,12 @@ func TestLabRedirectAndPreflight(t *testing.T) {
 
 func TestLabConfigAndReturnedInput(t *testing.T) {
 	for _, host := range []string{"https://bad.test", "bad.test/abc", "*.test", "bad\n.test", "localhost", "127.0.0.1"} {
-		if h, err := NewHandler(Config{ExternalHost: host}); err == nil {
+		if h, err := NewHandler(Config{ExternalHosts: host}); err == nil {
 			h.Close()
 			t.Fatalf("accepted %q", host)
 		}
 	}
-	h, err := NewHandler(Config{ExternalHost: "www.pz-target-web.com", PrimaryHost: "127.0.0.1"})
+	h, err := NewHandler(Config{ExternalHosts: "www.pz-target-web.com", PrimaryHost: "127.0.0.1"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,5 +119,103 @@ func TestLabConfigAndReturnedInput(t *testing.T) {
 	}
 	if json.Unmarshal(w.Body.Bytes(), &body) != nil || body.Input.Name != "<script>" {
 		t.Fatalf("actual input lost: %s", w.Body.String())
+	}
+}
+
+// 多域名入口都可访问和预检，来源限制与固定跳转目标保持明确。
+func TestLabMultipleDomains(t *testing.T) {
+	h, err := NewHandler(Config{
+		ExternalHosts: " first.lab.test,\tsecond.lab.test , first.lab.test ",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	for _, tc := range []struct {
+		origin string
+		status int
+	}{
+		{"http://first.lab.test:38080", 204},
+		{"https://first.lab.test:38443", 204},
+		{"http://second.lab.test:38080", 204},
+		{"https://second.lab.test:38443", 204},
+		{"https://other.lab.test:38443", 403},
+		{"https://second.lab.test:38080", 403},
+		{"http://second.lab.test:8080", 403},
+		{"https://second.lab.test", 403},
+		{"null", 403},
+	} {
+		t.Run(tc.origin, func(t *testing.T) {
+			r := httptest.NewRequest("OPTIONS", "/lab/rest", nil)
+			r.Header.Set("Origin", tc.origin)
+			r.Header.Set("Access-Control-Request-Method", "POST")
+			r.Header.Set("Access-Control-Request-Headers", "content-type")
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, r)
+			if w.Code != tc.status {
+				t.Fatalf("来源 %q 返回 %d，预期 %d", tc.origin, w.Code, tc.status)
+			}
+			allowed := w.Header().Get("Access-Control-Allow-Origin")
+			if (tc.status == 204 && allowed != tc.origin) || (tc.status == 403 && allowed != "") {
+				t.Fatalf("来源响应头不符合白名单：%q", allowed)
+			}
+		})
+	}
+	r := httptest.NewRequest("GET", "/lab/redirect/302/external/ok", nil)
+	r.Header.Set("Origin", "https://second.lab.test:38443")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != 302 || w.Header().Get("Location") != "https://first.lab.test:38443/fixtures/landing.html" {
+		t.Fatalf("外链应固定跳转到第一个域名：%d %v", w.Code, w.Header())
+	}
+}
+
+// 任意一项非法时拒绝整个配置，不能只取第一个合法域名继续运行。
+func TestLabDomainListValidationAndFallback(t *testing.T) {
+	for _, value := range []string{
+		" ", ",first.lab.test", "first.lab.test,", "first.lab.test,,second.lab.test",
+		"first.lab.test,https://second.lab.test", "first.lab.test,second.lab.test:38443",
+		"first.lab.test,*.lab.test", "first.lab.test,127.0.0.1", "first.lab.test,999.1.1.1",
+		"first.lab.test,UPPER.lab.test", "first.lab.test,second..lab.test", "first.lab.test,second.lab.test.",
+		"first.lab.test,second.lab.test\n", "first.lab.test\n,second.lab.test", "first.lab.test,second.lab.test;",
+		"first.lab.test," + strings.Repeat("a", 64) + ".test",
+		"first.lab.test," + strings.Repeat(strings.Repeat("a", 63)+".", 4) + "test",
+	} {
+		t.Run(value, func(t *testing.T) {
+			if h, err := NewHandler(Config{ExternalHosts: value}); err == nil {
+				h.Close()
+				t.Fatalf("接受了非法域名列表：%q", value)
+			}
+		})
+	}
+	for _, tc := range []struct {
+		config Config
+		hosts  []string
+	}{
+		{Config{}, []string{"www.pz-target-web.com", "www.pz-target-web-1.com", "www.pz-target-web-2.com"}},
+		{Config{ExternalHosts: "single.lab.test"}, []string{"single.lab.test"}},
+	} {
+		h, err := NewHandler(tc.config)
+		if err != nil {
+			t.Fatal(err)
+		}
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest("GET", "/lab/redirect/302/external/ok", nil))
+		defer h.Close()
+		if w.Header().Get("Location") != "https://"+tc.hosts[0]+":38443/fixtures/landing.html" {
+			t.Fatalf("默认或单域名列表配置未生效：%v", w.Header())
+		}
+		// 三个默认域名均应允许 HTTP/HTTPS 来源，固定跳转仍使用第一个域名。
+		for _, host := range tc.hosts {
+			for _, origin := range []string{"http://" + host + ":38080", "https://" + host + ":38443"} {
+				r := httptest.NewRequest("GET", "/lab/rest", nil)
+				r.Header.Set("Origin", origin)
+				w := httptest.NewRecorder()
+				h.ServeHTTP(w, r)
+				if w.Code != 200 || w.Header().Get("Access-Control-Allow-Origin") != origin {
+					t.Fatalf("配置域名来源未生效：%s，状态 %d", origin, w.Code)
+				}
+			}
+		}
 	}
 }

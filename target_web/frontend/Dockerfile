@@ -11,7 +11,8 @@ COPY nginx/proxy-api.conf /etc/nginx/proxy-api.conf
 COPY nginx/lab-locations.conf /etc/nginx/lab-locations.conf
 COPY nginx/external.conf.template /etc/nginx/external.conf.template
 COPY --chmod=755 entrypoint/25-link-lab.sh /docker-entrypoint.d/25-link-lab.sh
-# 校验器只在启动时读取，不放入静态公开目录。
+# IP 与域名校验器只在启动时读取，不放入静态公开目录。
 COPY entrypoint/ip-origin.awk /docker-entrypoint.d/ip-origin.awk
+COPY entrypoint/external-hosts.awk /docker-entrypoint.d/external-hosts.awk
 COPY html/ /usr/share/nginx/html/
 EXPOSE 8080 8443

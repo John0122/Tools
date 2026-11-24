@@ -15,7 +15,8 @@ usage() {
 --lan-ip  指定另一套服务的私有 IPv4；省略时沿用已有环境配置或在终端提示输入
 
 目标机器需要 Docker、Compose v2（支持 up --wait）、OpenSSL 和 sha256sum/shasum，无需 Go。
-镜像标签使用包内元数据；可通过 TARGET_WEB_EXTERNAL_HOST、TARGET_WEB_LAN_IP_ORIGIN 配置样例。
+镜像标签使用包内元数据；TARGET_WEB_EXTERNAL_HOSTS 可配置单个域名或逗号分隔的多个域名。
+TARGET_WEB_LAN_IP_ORIGIN 配置局域网样例。
 服务管理：./target_web.sh status|logs|down；重新部署：./deploy.sh [参数]
 HELP
 }

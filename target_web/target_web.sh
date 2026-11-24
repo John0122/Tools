@@ -17,6 +17,8 @@ usage() {
   cert    重新生成证书；随后执行 up 使运行中的服务载入新证书
 
 up/cert 默认检测宿主机默认路由的 IPv4；多网卡时可用 --host 指定。
+TARGET_WEB_EXTERNAL_HOSTS 配置单个域名或逗号分隔的多个域名；首个域名用于外链样例。
+未配置列表或列表为空时默认 www.pz-target-web.com,www.pz-target-web-1.com,www.pz-target-web-2.com。
 up 未配置局域网入口时提示输入另一台设备的私有 IPv4，回车可跳过。
 --lan-ip 仅用于 up，生成 https://<IPv4>:38443/，适合非交互部署。
 也可沿用 TARGET_WEB_LAN_IP_ORIGIN 指定 HTTP(S) 入口；非交互且未配置时跳过。
@@ -134,9 +136,11 @@ case "$command" in
   up|cert)
     [[ -n "$host" ]] || host=$(detect_host)
     [[ -n "$host" ]] || die "无法检测宿主机 IPv4，请使用 --host <本地 IP> 指定"
-    # Compose 同步注入前端 IP 样例与后端允许来源，外站域名也交给证书脚本校验。
+    # 在证书、构建及交互提示前校验全部域名，前后端与证书使用同一列表。
     export TARGET_WEB_HOST="$host"
-    export TARGET_WEB_EXTERNAL_HOST="${TARGET_WEB_EXTERNAL_HOST:-www.pz-target-web.com}"
+    export TARGET_WEB_EXTERNAL_HOSTS="${TARGET_WEB_EXTERNAL_HOSTS:-www.pz-target-web.com,www.pz-target-web-1.com,www.pz-target-web-2.com}"
+    external_hosts=$(printf '%s\n' "$TARGET_WEB_EXTERNAL_HOSTS" |
+      awk -f "$ROOT/frontend/docker-entrypoint.d/external-hosts.awk") || die "域名列表须为逗号分隔的小写 DNS 名称"
     if [[ "$command" == cert ]]; then
       bash "$ROOT/scripts/generate-cert.sh" "$host" "$ROOT/certs" --force
       printf '执行 ./target_web.sh up --host %s 使服务载入新证书。\n' "$host"
@@ -154,7 +158,10 @@ case "$command" in
     # 与 Compose 映射一致，同时展示两种协议的实际入口。
     printf '\nHTTP：http://%s:38080\nHTTPS：https://%s:38443\n' "$host" "$host"
     printf '外链测试目录：https://%s:38443/links/\n' "$host"
-    printf '外站需在浏览器和扫描器所在主机解析：%s -> %s\n' "$TARGET_WEB_EXTERNAL_HOST" "$host"
+    # 逐个展示入口，避免只为第一个域名配置解析。
+    for external_host in $external_hosts; do
+      printf '域名入口：https://%s:38443/（浏览器和扫描器需解析到 %s）\n' "$external_host" "$host"
+    done
     printf '自签名证书会触发浏览器信任提示；可使用以下命令校验：\n'
     printf "curl --noproxy '*' --cacert %q %q\n" "$ROOT/certs/fullchain.pem" "https://$host:38443/healthz"
     ;;

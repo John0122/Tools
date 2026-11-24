@@ -14,8 +14,8 @@ import (
 
 // 以查询结果而非固定成功文案验证 GraphQL，未知字段必须失败。
 func TestGraphQLQueries(t *testing.T) {
-	// 协议样例使用与前端虚拟主机一致的域名。
-	h, _ := NewHandler(Config{ExternalHost: "www.pz-target-web.com"})
+	// 协议样例通过统一列表配置使用与前端虚拟主机一致的域名。
+	h, _ := NewHandler(Config{ExternalHosts: "www.pz-target-web.com"})
 	defer h.Close()
 	for _, tc := range []struct {
 		query  string
@@ -38,7 +38,11 @@ func TestGraphQLQueries(t *testing.T) {
 }
 
 func TestWebSocketEchoOriginAndShutdown(t *testing.T) {
-	h, _ := NewHandler(Config{ExternalHost: "www.pz-target-web.com"})
+	// 使用列表中的第二个域名，覆盖多入口的真实升级与连接生命周期。
+	h, err := NewHandler(Config{ExternalHosts: "www.pz-target-web.com,second.lab.test"})
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer h.Close()
 	s := httptest.NewServer(h)
 	defer s.Close()
@@ -53,8 +57,8 @@ func TestWebSocketEchoOriginAndShutdown(t *testing.T) {
 	if resp == nil || resp.StatusCode != 403 {
 		t.Fatalf("bad Origin response %v %v", resp, err)
 	}
-	// 本机协议测试仍走临时监听器，浏览器来源沿用部署的 HTTPS 入口。
-	c, _, err = websocket.Dial(ctx, address, &websocket.DialOptions{HTTPHeader: http.Header{"Origin": []string{"https://localhost:38443"}}})
+	// 本机协议测试仍走临时监听器，浏览器来源使用第二个域名的 HTTPS 入口。
+	c, _, err = websocket.Dial(ctx, address, &websocket.DialOptions{HTTPHeader: http.Header{"Origin": []string{"https://second.lab.test:38443"}}})
 	if err != nil {
 		t.Fatal(err)
 	}

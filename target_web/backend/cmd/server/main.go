@@ -60,7 +60,11 @@ func serve(ctx context.Context, listener net.Listener) error {
 	}
 	selfURL := "http://" + net.JoinHostPort(ip.String(), fmt.Sprint(address.Port))
 	handler := web.NewHandler(selfURL)
-	lab, err := linklab.NewHandler(linklab.Config{ExternalHost: os.Getenv("TARGET_WEB_EXTERNAL_HOST"), PrimaryHost: os.Getenv("TARGET_WEB_HOST")})
+	// 将完整域名列表交给统一配置校验，使每个前端入口都能访问交互样例。
+	lab, err := linklab.NewHandler(linklab.Config{
+		ExternalHosts: os.Getenv("TARGET_WEB_EXTERNAL_HOSTS"),
+		PrimaryHost:   os.Getenv("TARGET_WEB_HOST"),
+	})
 	if err != nil {
 		return err
 	}

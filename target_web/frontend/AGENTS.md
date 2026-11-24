@@ -6,7 +6,7 @@
 - 首页在 `index.html`，交互在 `js/app.js`；外链目录与分类页在 `links/`，共享交互在 `js/link-lab.js`。样式复用 `css/style.css` 的变量，分类页补充样式在 `css/link-lab.css`；设计约定见 `../DESIGN.md`。
 - `../build.sh` 整理 `html/` 和 `nginx/` 临时产物上下文，再独立构建 Nginx 镜像；Dockerfile 只复制运行文件，不运行编译命令。Nginx 配置在 `nginx/`，不得复制进静态公开目录。
 - Nginx 将 API 代理到 `backend:8000`，通过 Docker DNS 解析跟踪后端地址变化。
-- 受控域名复用当前 Nginx 容器，`TARGET_WEB_EXTERNAL_HOST` 对应入口直接提供完整首页、分类页和同源 API，与 IP 入口保持路由一致；不存在的路径保留 404。外链清单以 IP 入口为对照，域名入口下指向同域名的链接属于站内。启动脚本替换静态产物与虚拟主机模板中的占位符；源码保留占位符，不硬编码部署 IP。
+- 受控域名复用当前 Nginx 容器，统一使用 `TARGET_WEB_EXTERNAL_HOSTS` 接受单个或逗号分隔的多个小写 DNS 名称；未设置或为空时默认 `www.pz-target-web.com,www.pz-target-web-1.com,www.pz-target-web-2.com`。全部域名共用完整首页、分类页和同源 API，与 IP 入口保持路由一致；不存在的路径保留 404。第一个域名用于静态外链样例和固定重定向，外链清单以 IP 入口为对照。`external-hosts.awk` 供容器、证书与部署共用校验，构建与离线包均须携带。启动脚本替换静态产物与虚拟主机模板中的占位符；源码保留占位符，不硬编码部署 IP。
 - IP 分类使用 `TARGET_WEB_HOST` 与可选 `TARGET_WEB_LAN_IP_ORIGIN`，公网链接固定为 `https://1.1.1.1/cdn-cgi/trace`。部署脚本提示输入另一台设备的私有 IPv4，或使用 `--lan-ip`，默认生成 HTTPS 38443 入口；入口校验器与启动脚本一并打包。局域网目标不能重复本站 IP；空配置不得生成可点击的空链接或伪造响应状态。
 - 对外映射 `38080:8080` 与 `38443:8443`，同时提供 HTTP 与 HTTPS；容器内 HTTP 8080 也用于健康检查。本机 IP 证书由宿主机生成并只读挂载，证书与私钥不进入镜像。
 

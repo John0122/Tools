@@ -89,8 +89,9 @@ for service in frontend backend; do
   IMAGE_IDS+=("$image_id")
 done
 
-# 明确列举运行文件，禁止复制整个项目目录，避免把私钥或构建缓存带到其他机器。
-FILES=(compose.yaml deploy.sh target_web.sh README.md scripts/generate-cert.sh frontend/docker-entrypoint.d/ip-origin.awk)
+# 明确列举运行文件，包含宿主机使用的 IP 与域名校验器，避免遗漏离线依赖或带入私钥。
+FILES=(compose.yaml deploy.sh target_web.sh README.md scripts/generate-cert.sh
+  frontend/docker-entrypoint.d/ip-origin.awk frontend/docker-entrypoint.d/external-hosts.awk)
 for file in "${FILES[@]}"; do
   mkdir -p "$BUNDLE/$(dirname -- "$file")"
   cp "$ROOT/$file" "$BUNDLE/$file"

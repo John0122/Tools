@@ -10,21 +10,10 @@ fi
 host=$1
 cert_dir=$2
 force=${3:-}
-# 默认 SAN 与部署入口一致；已有证书不匹配此主机名时会重新生成。
-external_host=${TARGET_WEB_EXTERNAL_HOST:-www.pz-target-web.com}
-
-# DNS 名称也进入 OpenSSL SAN 参数；逐标签验证，拒绝通配符、URL 和注入字符。
-valid_external_host() {
-  local label
-  local -a labels
-  [[ ${#1} -le 253 && "$1" == *.* && "$1" != *..* && "$1" != *. ]] || return 1
-  [[ ! "$1" =~ ^[0-9.]+$ ]] || return 1
-  IFS=. read -r -a labels <<< "$1"
-  for label in "${labels[@]}"; do
-    [[ ${#label} -le 63 && "$label" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]] || return 1
-  done
-}
-valid_external_host "$external_host" || die "外站主机名无效：$external_host"
+# 默认覆盖三个域名；与前端共用校验器，拒绝空列表项、URL、通配符及注入字符。
+ROOT=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+external_hosts=$(printf '%s\n' "${TARGET_WEB_EXTERNAL_HOSTS:-www.pz-target-web.com,www.pz-target-web-1.com,www.pz-target-web-2.com}" |
+  awk -f "$ROOT/frontend/docker-entrypoint.d/external-hosts.awk") || die "域名列表须为逗号分隔的小写 DNS 名称"
 
 # 仅接受无前导零的 IPv4，避免把 URL、换行或 OpenSSL 扩展混入证书参数。
 valid_ipv4() {
@@ -49,13 +38,16 @@ key="$cert_dir/privkey.pem"
 
 # 复用前同时验证有效期、访问地址、回环地址及密钥配对，避免 Web 服务启动失败。
 reusable_cert() {
-  local cert_pub key_pub
+  local cert_pub key_pub external_host
   [[ -s "$cert" && -s "$key" ]] || return 1
   openssl x509 -in "$cert" -noout -checkend 2592000 >/dev/null 2>&1 || return 1
   openssl verify -CAfile "$cert" -purpose sslserver -verify_ip "$host" "$cert" >/dev/null 2>&1 || return 1
   openssl verify -CAfile "$cert" -verify_ip 127.0.0.1 "$cert" >/dev/null 2>&1 || return 1
   openssl verify -CAfile "$cert" -verify_hostname localhost "$cert" >/dev/null 2>&1 || return 1
-  openssl verify -CAfile "$cert" -verify_hostname "$external_host" "$cert" >/dev/null 2>&1 || return 1
+  # 列表中的每个入口都必须被覆盖，新增域名不匹配时重新签发。
+  for external_host in $external_hosts; do
+    openssl verify -CAfile "$cert" -verify_hostname "$external_host" "$cert" >/dev/null 2>&1 || return 1
+  done
   cert_pub=$(openssl x509 -in "$cert" -noout -pubkey 2>/dev/null) || return 1
   key_pub=$(openssl pkey -in "$key" -passin pass: -pubout 2>/dev/null) || return 1
   [[ "$cert_pub" == "$key_pub" ]]
@@ -67,7 +59,10 @@ if [[ "$force" != --force ]] && reusable_cert; then
   exit 0
 fi
 
-san="IP:$host,DNS:localhost,DNS:$external_host"
+san="IP:$host,DNS:localhost"
+for external_host in $external_hosts; do
+  san="$san,DNS:$external_host"
+done
 [[ "$host" == 127.0.0.1 ]] || san="$san,IP:127.0.0.1"
 temporary=$(mktemp -d "$cert_dir/.generate.XXXXXX")
 trap 'rm -rf -- "$temporary"' EXIT

@@ -5,8 +5,8 @@ services:
     image: target-web-frontend:${TARGET_WEB_IMAGE_TAG:-local}
     pull_policy: never
     environment:
-      # 前后端与证书使用同一默认主机名，保持资源地址与允许来源一致。
-      TARGET_WEB_EXTERNAL_HOST: ${TARGET_WEB_EXTERNAL_HOST:-www.pz-target-web.com}
+      # 单个或多个域名统一使用列表配置，前后端与证书采用相同默认值。
+      TARGET_WEB_EXTERNAL_HOSTS: ${TARGET_WEB_EXTERNAL_HOSTS:-www.pz-target-web.com,www.pz-target-web-1.com,www.pz-target-web-2.com}
       # 公网链接固定在页面中；局域网入口由部署提示或显式配置传入。
       TARGET_WEB_HOST: ${TARGET_WEB_HOST:-127.0.0.1}
       TARGET_WEB_LAN_IP_ORIGIN: ${TARGET_WEB_LAN_IP_ORIGIN:-}
@@ -42,7 +42,8 @@ services:
     image: target-web-backend:${TARGET_WEB_IMAGE_TAG:-local}
     pull_policy: never
     environment:
-      TARGET_WEB_EXTERNAL_HOST: ${TARGET_WEB_EXTERNAL_HOST:-www.pz-target-web.com}
+      # 所有配置域名同步进入 CORS 与 WebSocket 来源白名单。
+      TARGET_WEB_EXTERNAL_HOSTS: ${TARGET_WEB_EXTERNAL_HOSTS:-www.pz-target-web.com,www.pz-target-web-1.com,www.pz-target-web-2.com}
       TARGET_WEB_HOST: ${TARGET_WEB_HOST:-127.0.0.1}
     restart: unless-stopped
     # 仅供 Compose 网络中的前端访问，不发布宿主机端口。

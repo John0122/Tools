@@ -16,7 +16,7 @@
 - `/api/invoke` 仅代发 TRACE、CONNECT，目标由实际监听地址与固定路径生成；不得接受客户端传入的地址、路径或认证头，不使用环境代理，不跟随重定向。
 - 代发结果保留目标响应的状态码、响应头及正文，不用预置数据模拟请求；入口状态与目标状态分开表示。
 - `internal/linklab` 负责 `/lab/` 的 REST、GraphQL、表单、WebSocket、固定重定向及 404/410；不开放任意代理或跳转地址，不保存演示提交内容。
-- CORS 与 WebSocket Origin 按 `TARGET_WEB_HOST`、`TARGET_WEB_EXTERNAL_HOST` 和本机回环地址的 HTTP 38080、HTTPS 38443 入口精确匹配；拒绝其他协议与端口组合。JSON/表单请求体上限 16 KiB，WS 消息上限 4 KiB、连接最多 2 分钟；关闭服务时释放升级连接。
+- CORS 与 WebSocket Origin 按 `TARGET_WEB_HOST`、`TARGET_WEB_EXTERNAL_HOSTS` 中全部域名和本机回环地址的 HTTP 38080、HTTPS 38443 入口精确匹配；拒绝其他协议与端口组合。域名列表支持单个域名或逗号分隔的多个域名，未设置或为空时默认 `www.pz-target-web.com,www.pz-target-web-1.com,www.pz-target-web-2.com`；第一个域名用于固定站外重定向，校验规则与前端及证书一致。JSON/表单请求体上限 16 KiB，WS 消息上限 4 KiB、连接最多 2 分钟；关闭服务时释放升级连接。
 
 ## 代码与数据
 

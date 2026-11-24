@@ -9,6 +9,7 @@ import unittest
 
 
 GENERATOR = Path(__file__).resolve().parents[1] / "scripts" / "generate-cert.sh"
+DEFAULT_HOSTS = ("www.pz-target-web.com", "www.pz-target-web-1.com", "www.pz-target-web-2.com")
 
 
 class CertificateTests(unittest.TestCase):
@@ -18,12 +19,18 @@ class CertificateTests(unittest.TestCase):
         self.directory = Path(self.temp.name) / "certs"
         self.cert = self.directory / "fullchain.pem"
         self.key = self.directory / "privkey.pem"
+        # 隔离部署环境，默认、单个和多个域名由每个用例显式指定。
+        self.environment = dict(os.environ)
+        self.environment.pop("TARGET_WEB_EXTERNAL_HOSTS", None)
 
-    def generate(self, host="192.168.5.10", force=False):
+    def generate(self, host="192.168.5.10", force=False, external_hosts=None):
         command = ["bash", str(GENERATOR), host, str(self.directory)]
         if force:
             command.append("--force")
-        return subprocess.run(command, capture_output=True, text=True)
+        environment = dict(self.environment)
+        if external_hosts is not None:
+            environment["TARGET_WEB_EXTERNAL_HOSTS"] = external_hosts
+        return subprocess.run(command, env=environment, capture_output=True, text=True)
 
     def openssl(self, *args):
         result = subprocess.run(
@@ -62,21 +69,63 @@ class CertificateTests(unittest.TestCase):
         self.assertEqual(before, (self.cert.read_bytes(), self.key.read_bytes()))
         self.assertEqual(self.key.stat().st_mode & 0o777, 0o600)
 
-    def test_external_hostname_is_in_certificate(self):
-        # 地址校验覆盖带 www 的完整主机名，避免仅包含裸域名的证书被误用。
+    def test_default_hostnames_are_in_certificate(self):
+        # 未配置时三个默认入口均须通过证书地址校验。
         self.assert_generated()
-        self.openssl("verify", "-CAfile", self.cert, "-verify_hostname",
-                     "www.pz-target-web.com", self.cert)
+        for host in DEFAULT_HOSTS:
+            self.openssl("verify", "-CAfile", self.cert, "-verify_hostname", host, self.cert)
 
     def test_external_hostname_change_renews_certificate(self):
         self.assert_generated()
         before = self.cert.read_bytes()
-        environment = dict(os.environ, TARGET_WEB_EXTERNAL_HOST="other-external.test")
-        result = subprocess.run(["bash", str(GENERATOR), "192.168.5.10", str(self.directory)],
-                                env=environment, capture_output=True, text=True)
+        result = self.generate(external_hosts="other-external.test")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertNotEqual(before, self.cert.read_bytes())
         self.openssl("verify", "-CAfile", self.cert, "-verify_hostname", "other-external.test", self.cert)
+
+    def test_empty_domain_list_uses_default(self):
+        # 空字符串与未设置列表一致，仍生成覆盖三个默认域名的证书。
+        result = self.generate(external_hosts="")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for host in DEFAULT_HOSTS:
+            self.openssl("verify", "-CAfile", self.cert, "-verify_hostname", host, self.cert)
+
+    def test_all_domains_are_covered_without_duplicates(self):
+        # 每个域名都需要通过实际证书地址校验，重复项不写入 SAN。
+        domains = " first.lab.test, second.lab.test,first.lab.test "
+        result = self.generate(external_hosts=domains)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for host in ("first.lab.test", "second.lab.test"):
+            self.openssl("verify", "-CAfile", self.cert, "-verify_hostname", host, self.cert)
+        details = self.openssl("x509", "-in", self.cert, "-text", "-noout")
+        for host in DEFAULT_HOSTS:
+            self.assertNotIn("DNS:" + host, details)
+        self.assertEqual(details.count("DNS:first.lab.test"), 1)
+        before = (self.cert.read_bytes(), self.key.read_bytes())
+        result = self.generate(external_hosts=domains)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(before, (self.cert.read_bytes(), self.key.read_bytes()))
+
+    def test_adding_domain_renews_certificate(self):
+        self.assert_generated()
+        before = self.cert.read_bytes()
+        result = self.generate(external_hosts="www.pz-target-web.com,second.lab.test")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotEqual(before, self.cert.read_bytes())
+        for host in ("www.pz-target-web.com", "second.lab.test"):
+            self.openssl("verify", "-CAfile", self.cert, "-verify_hostname", host, self.cert)
+
+    def test_invalid_domain_list_preserves_certificate(self):
+        # 校验失败发生在写入前，不留下半份新证书，也不回退到默认域名。
+        self.assert_generated()
+        before = (self.cert.read_bytes(), self.key.read_bytes())
+        for domains in (" ", "first.lab.test,", "first.lab.test,,second.lab.test",
+                        "first.lab.test,https://second.lab.test", "first.lab.test,*.lab.test",
+                        "first.lab.test\nsecond.lab.test", "first.lab.test,DNS:bad.test"):
+            with self.subTest(domains=domains):
+                result = self.generate(external_hosts=domains)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(before, (self.cert.read_bytes(), self.key.read_bytes()))
 
     def test_changed_ip_replaces_certificate(self):
         self.assert_generated()

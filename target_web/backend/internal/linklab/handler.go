@@ -19,7 +19,8 @@ import (
 	"github.com/graphql-go/graphql"
 )
 
-type Config struct{ ExternalHost, PrimaryHost string }
+// Config 统一使用域名列表，空列表采用默认域名；首个域名是固定外链跳转目标。
+type Config struct{ ExternalHosts, PrimaryHost string }
 
 // Handler 持有连接生命周期；主服务关闭时一并释放升级后的连接。
 type Handler struct {
@@ -34,27 +35,34 @@ type Handler struct {
 var dnsLabel = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`)
 
 func NewHandler(c Config) (*Handler, error) {
-	if c.ExternalHost == "" {
-		// 与部署及证书默认值一致，确保来源校验和固定跳转使用同一外站。
-		c.ExternalHost = "www.pz-target-web.com"
+	configured := c.ExternalHosts
+	if configured == "" {
+		// 与部署及证书默认值一致，三个域名均允许访问，首个域名用于固定跳转。
+		configured = "www.pz-target-web.com,www.pz-target-web-1.com,www.pz-target-web-2.com"
 	}
 	if c.PrimaryHost == "" {
 		c.PrimaryHost = "127.0.0.1"
 	}
-	if len(c.ExternalHost) > 253 || !strings.Contains(c.ExternalHost, ".") || net.ParseIP(c.ExternalHost) != nil {
-		return nil, fmt.Errorf("外站主机名必须是独立 DNS 名称")
-	}
-	for _, label := range strings.Split(c.ExternalHost, ".") {
-		if !dnsLabel.MatchString(label) {
-			return nil, fmt.Errorf("外站主机名无效")
+	// 与宿主机及前端校验一致：逗号分隔，仅允许两侧空格/制表符，不忽略空项。
+	hosts := strings.Split(configured, ",")
+	for i, host := range hosts {
+		host = strings.Trim(host, " \t")
+		if len(host) > 253 || !strings.Contains(host, ".") || strings.Trim(host, "0123456789.") == "" {
+			return nil, fmt.Errorf("外站主机名必须是独立 DNS 名称")
 		}
+		for _, label := range strings.Split(host, ".") {
+			if !dnsLabel.MatchString(label) {
+				return nil, fmt.Errorf("外站主机名无效")
+			}
+		}
+		hosts[i] = host
 	}
 	if net.ParseIP(c.PrimaryHost) == nil {
 		return nil, fmt.Errorf("主站访问地址必须是 IP")
 	}
-	h := &Handler{external: c.ExternalHost, origins: map[string]bool{}, connections: map[*websocket.Conn]struct{}{}}
-	// 只接纳 Compose 已发布的两个入口，不放宽到任意协议或端口。
-	for _, host := range []string{c.PrimaryHost, "127.0.0.1", "localhost", "::1", c.ExternalHost} {
+	h := &Handler{external: hosts[0], origins: map[string]bool{}, connections: map[*websocket.Conn]struct{}{}}
+	// 所有域名只接纳 Compose 已发布的两个入口；重复域名在来源映射中自然去重。
+	for _, host := range append(hosts, c.PrimaryHost, "127.0.0.1", "localhost", "::1") {
 		h.origins["http://"+net.JoinHostPort(host, "38080")] = true
 		h.origins["https://"+net.JoinHostPort(host, "38443")] = true
 	}
