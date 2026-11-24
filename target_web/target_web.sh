@@ -82,7 +82,7 @@ case "$command" in
   up|cert)
     [[ -n "$host" ]] || host=$(detect_host)
     [[ -n "$host" ]] || die "无法检测宿主机 IPv4，请使用 --host <本地 IP> 指定"
-    # Compose 由此配置允许的浏览器来源，外站域名也交给证书脚本校验。
+    # Compose 同步注入前端 IP 样例与后端允许来源，外站域名也交给证书脚本校验。
     export TARGET_WEB_HOST="$host"
     export TARGET_WEB_EXTERNAL_HOST="${TARGET_WEB_EXTERNAL_HOST:-pz-target-web.com}"
     if [[ "$command" == cert ]]; then

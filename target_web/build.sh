@@ -120,7 +120,9 @@ prepare_frontend() {
   cp "$ROOT/frontend/index.html" "$CONTEXT_DIR/frontend/html/"
   cp -R "$ROOT/frontend/css" "$ROOT/frontend/js" "$ROOT/frontend/links" "$ROOT/frontend/fixtures" "$CONTEXT_DIR/frontend/html/"
   cp "$ROOT/frontend/nginx/"*.conf "$ROOT/frontend/nginx/"*.template "$CONTEXT_DIR/frontend/nginx/"
-  cp "$ROOT/frontend/docker-entrypoint.d/25-link-lab.sh" "$CONTEXT_DIR/frontend/entrypoint/"
+  # 启动脚本和 IP 入口校验器共同进入运行镜像，均不公开为静态资源。
+  cp "$ROOT/frontend/docker-entrypoint.d/25-link-lab.sh" \
+    "$ROOT/frontend/docker-entrypoint.d/ip-origin.awk" "$CONTEXT_DIR/frontend/entrypoint/"
 }
 
 # 两个服务先准备产物，再分别组装镜像；源码、证书、测试与规范文件不进入构建上下文。

@@ -25,9 +25,9 @@ target_web/
 │   ├── index.html
 │   ├── css/style.css
 │   ├── js/app.js
-│   ├── links/                 # 二级目录、12 个三级分类页、样例清单
+│   ├── links/                 # 二级目录、13 个三级分类页、样例清单
 │   ├── fixtures/              # 真实演示资源与素材许可证
-│   ├── docker-entrypoint.d/   # 注入受控外站主机名
+│   ├── docker-entrypoint.d/   # 校验并注入受控域名及 IP 入口
 │   ├── nginx/                 # 静态服务、HTTPS、反向代理配置
 │   └── Dockerfile
 ├── backend/
@@ -37,7 +37,7 @@ target_web/
 │   ├── go.mod
 │   └── Dockerfile             # scratch 运行镜像，只复制二进制及公共 CA
 ├── scripts/generate-cert.sh
-├── tests/test_cert.py
+├── tests/                    # 证书生命周期与 IP 入口校验的单元测试
 ├── certs/                     # 本地生成，不入库、不进入构建上下文
 ├── DESIGN.md                  # 页面设计约定
 ├── build.sh                   # 本机编译、产物整理与双镜像构建
@@ -167,7 +167,7 @@ curl --noproxy '*' --cacert certs/fullchain.pem -X PATCH https://127.0.0.1:38443
 
 ## 外链检测页面
 
-首页入口 → `/links/` 二级目录 → 12 个三级分类页。第一张分类表决定目录，HTML 标签与技术特征决定各页中的演示区域；不递归生成大量子页面。
+首页入口 → `/links/` 二级目录 → 13 个三级分类页。分类与 HTML 技术特征决定各页中的演示区域；不递归生成大量子页面。
 
 三级页面的资源访问链接统一在新标签页打开，包括站内外普通链接、动态生成链接、暗链、死链、重定向入口及样例清单等资料链接，保留当前测试页面。文件链接由浏览器按下载响应处理。
 
@@ -185,10 +185,11 @@ curl --noproxy '*' --cacert certs/fullchain.pem -X PATCH https://127.0.0.1:38443
 | `fonts/` | 字体 | @font-face 加载 WOFF/WOFF2/TTF/OTF |
 | `forms/` | 表单 | 原生 GET、POST urlencoded/multipart、formaction 覆盖 |
 | `redirects/` | 重定向 | 301/302/303/307/308、Meta Refresh、JS 跳转、失效跳转链 |
+| `ip-address/` | IP 地址链接 | 内站 HTTP/HTTPS、公网外站、局域网其他设备、内站 IP 暗链与 404/410 |
 
-每个分类页还包含站内暗链、站外暗链、站内 404、站外 410，以及正常折叠内容对照。暗链真实存在于 DOM，通过隐藏容器、透明或屏外定位隐藏；隐藏目标不在普通可见链接中重复出现。暗链表示可见性，死链表示可达性，站内/站外表示归属，这些维度分别记录。正常 script/link 资源声明不因为不可见就被当成暗链。
+前 12 个分类页还包含站内暗链、站外暗链、站内 404、站外 410，以及正常折叠内容对照。IP 分类单独提供内站 IP 暗链和真实 404/410，不混入域名外站样例，也不预设公网或局域网服务的响应。暗链真实存在于 DOM，通过隐藏容器、透明或屏外定位隐藏；隐藏目标不在普通可见链接中重复出现。暗链表示可见性，死链表示可达性，站内/站外表示归属，这些维度分别记录。正常 script/link 资源声明不因为不可见就被当成暗链。
 
-`/links/cases.json` 提供 137 条样例记录，包含固定编号、页面、技术特征、目标、方法、触发方式、可见性和预期 HTTP 状态，是结果核对清单；需要独立衡量发现能力时，不把清单作为扫描起点。跳转记录的状态是第一跳，仍应跟踪最终目标。DNS 预取与预连接没有 HTTP 响应，其方法和状态字段为 null。资源提示和社交元数据不保证浏览器主动请求；动态按钮、表单和 WS 需要实际交互触发。
+`/links/cases.json` 提供 144 条样例记录，包含固定编号、页面、技术特征、目标、方法、触发方式、可见性和预期 HTTP 状态，是结果核对清单；需要独立衡量发现能力时，不把清单作为扫描起点。IP 分类占 7 条，其中两个可选目标未配置时 `target` 为 null，页面只显示未配置说明。IP 记录另含 `ip_group`，取值为 `internal`、`public`、`lan`；原有 `scope` 继续表示站点归属，公网和局域网其他设备都为 `external`。这两个非受控目标的 `expected_status` 始终为 null，表示不预设响应状态。跳转记录的状态是第一跳，仍应跟踪最终目标。DNS 预取与预连接没有 HTTP 响应，其方法和状态字段为 null。资源提示和社交元数据不保证浏览器主动请求；动态按钮、表单和 WS 需要实际交互触发。
 
 图片、字体、媒体和下载均为实际文件；`sample.exe` 是仅打印说明的 Windows 程序。M3U8 引用有效 MP3 Packed Audio 分片，播放需要原生支持 HLS 的浏览器。预置 404/410 会出现在浏览器网络面板和控制台中，这是正常测试数据。
 
@@ -210,13 +211,38 @@ curl --noproxy '*' --cacert certs/fullchain.pem -X PATCH https://127.0.0.1:38443
 TARGET_WEB_EXTERNAL_HOST=resources.lab.test ./target_web.sh up --host 192.168.5.10
 ```
 
-域名变化会更新证书、前端运行产物与后端允许来源；也需同步各访问设备的解析设置。`TARGET_WEB_HOST` 由 `up --host` 或 IP 自动检测传入后端。无需改 hosts 的命令行检查：
+域名变化会更新证书、前端运行产物与后端允许来源；也需同步各访问设备的解析设置。`TARGET_WEB_HOST` 由 `up --host` 或 IP 自动检测传入前端 IP 样例及后端来源配置。无需改 hosts 的命令行检查：
 
 ```bash
 curl --noproxy '*' --cacert certs/fullchain.pem \
   --resolve pz-target-web.com:38443:192.168.5.10 \
   https://pz-target-web.com:38443/fixtures/landing.html
 ```
+
+### IP 地址链接配置
+
+`/links/ip-address/` 仅使用 URL 中直接写出的 IPv4 地址，分组规则如下：
+
+| 分组 | 地址来源 | 约束 |
+| --- | --- | --- |
+| 内站 | `TARGET_WEB_HOST`，由启动脚本检测或 `--host` 指定 | 本站 IP 优先归内站，即使它使用私有地址；提供 38080/38443 的 HTTP/HTTPS 样例 |
+| 外站（公网） | `TARGET_WEB_PUBLIC_IP_ORIGIN`，默认空 | 其他站点的公网 IPv4 HTTP(S) 入口 |
+| 局域网 | `TARGET_WEB_LAN_IP_ORIGIN`，默认空 | 其他设备的 RFC 1918 私有 IPv4 HTTP(S) 入口 |
+
+两个可选入口采用 `http(s)://IPv4[:端口]`，可带末尾 `/`；不接受域名、IPv6、认证信息、路径、查询参数或片段。端口范围为 1–65535，不使用前导零。内站判定优先于其他两组，因此公网和局域网入口不能重复 `TARGET_WEB_HOST`，即使协议或端口不同。
+
+局域网仅接受 `10.0.0.0/8`、`172.16.0.0/12`、`192.168.0.0/16`。公网校验按 [IANA IPv4 特殊用途地址登记表](https://www.iana.org/assignments/iana-ipv4-special-registry/) 排除私网、共享地址、回环、链路本地、文档、基准测试、废弃中继、多播和保留地址；地址范围通过校验并不代表目标提供可访问的 Web 服务。
+
+例如，另一台局域网设备在 `192.168.5.20:38080` 提供 HTTP 服务时：
+
+```bash
+TARGET_WEB_LAN_IP_ORIGIN=http://192.168.5.20:38080 \
+  ./target_web.sh up --host 192.168.5.10
+```
+
+需要公网样例时，在同一命令前同时设置 `TARGET_WEB_PUBLIC_IP_ORIGIN` 为实际公网 IP 入口。两项均未配置也可正常启动；页面显示说明，清单保留记录但目标为 null，不生成空链接。错误的配置会使前端启动失败，日志说明对应配置问题。页面按配置的协议和端口访问目标根路径，证书与连通性由目标服务提供；页面通过普通新标签页链接访问，不自动探测这些设备。
+
+启动时将本站 IP 和可选入口写入 HTML 与 `cases.json`，无需执行 JavaScript 即可发现已配置的链接。更改配置后使用相同环境变量重新执行 `up` 以重建容器；已构建新版本镜像时可添加 `--no-build`。直接运行 Compose 时也须提供一致的 `TARGET_WEB_HOST`；省略时默认 `127.0.0.1`，只适用于同机访问。IP 配置不替代其他分类使用的 `TARGET_WEB_EXTERNAL_HOST`。
 
 ### 后端样例契约
 

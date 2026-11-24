@@ -6,6 +6,10 @@ services:
     pull_policy: never
     environment:
       TARGET_WEB_EXTERNAL_HOST: ${TARGET_WEB_EXTERNAL_HOST:-pz-target-web.com}
+      # IP 分类使用部署地址；可选入口留空时展示未配置状态。
+      TARGET_WEB_HOST: ${TARGET_WEB_HOST:-127.0.0.1}
+      TARGET_WEB_PUBLIC_IP_ORIGIN: ${TARGET_WEB_PUBLIC_IP_ORIGIN:-}
+      TARGET_WEB_LAN_IP_ORIGIN: ${TARGET_WEB_LAN_IP_ORIGIN:-}
     restart: unless-stopped
     depends_on:
       backend:

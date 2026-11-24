@@ -7,6 +7,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1] / "frontend"
 EXT = "https://__LAB_EXTERNAL_HOST__:38443"
+# 部署时注入本站 IP，使原始 HTML 能直接被静态扫描器提取。
+INTERNAL_IP = "https://__LAB_INTERNAL_HOST__:38443"
 CATEGORIES = [
     ("navigation", "页面跳转外链", "超链接、动态导航与页面元信息", "P0 · P1 · P2"),
     ("javascript", "JavaScript 外链", "外部脚本、模块导入与动态资源", "P0 · P1 · P2"),
@@ -20,6 +22,7 @@ CATEGORIES = [
     ("fonts", "字体外链", "WOFF、WOFF2、TTF、OTF 字体加载", "P1"),
     ("forms", "表单提交外链", "GET / POST、编码方式与提交地址覆盖", "P0"),
     ("redirects", "重定向外链", "HTTP、Meta Refresh 与 JavaScript 跳转", "P1"),
+    ("ip-address", "IP 地址链接", "内站 IP、公网外站与局域网其他设备", "P0 · P1"),
 ]
 CASES = []
 
@@ -30,11 +33,14 @@ def write(path, text):
     p.write_text(text, encoding="utf-8")
 
 
-def record(category, key, feature, target, status=200, scope="external", visibility="visible", method="GET", trigger="load"):
+def record(category, key, feature, target, status=200, scope="external", visibility="visible", method="GET", trigger="load", ip_group=None):
     case_id = f"{category}-{key}"
     CASES.append(dict(id=case_id, category=category, page=f"/links/{category}/", feature=feature,
                       target=target, expected_status=status, scope=scope, visibility=visibility,
                       method=method, trigger=trigger))
+    # 保留原有站点归属字段，IP 分组另记，避免把局域网地址误当作站内地址。
+    if ip_group is not None:
+        CASES[-1]["ip_group"] = ip_group
     return case_id
 
 
@@ -83,6 +89,44 @@ def shared_cases(slug, index):
     record(slug,"disclosure","details / summary / a[href]","/fixtures/landing.html?case="+slug+"-disclosure",scope="internal",visibility="collapsed",trigger="expand-and-click")
     return section("visibility","暗链与正常折叠内容","a[href] · display / opacity / position",hidden+f'''<p>本区包含两条真实隐藏链接：<code>{a}</code>、<code>{b}</code>。可通过 DOM 与计算样式检查。</p>
       <details><summary>正常折叠内容对照</summary><p>{link('/fixtures/landing.html?case='+slug+'-disclosure','展开后可见的站内资料')}</p></details>''',"隐藏样例是检测数据；正常折叠、无障碍内容与恶意暗链需要分别判断。", "P1")+section("dead-links","死链响应对照","HTTP 404 · HTTP 410",f'<ul><li>{link(dead_in,"站内不存在的页面 · 预期 404",c)}</li><li>{link(dead_out,"站外已移除的页面 · 预期 410",d)}</li></ul>',"这些链接故意失效；它们的错误响应是样例的预期结果。")
+
+
+def ip_address_content():
+    """IP 分类单独使用字面地址；非受控目标不复用域名外站的状态承诺。"""
+    slug = "ip-address"
+    links = []
+    for scheme, port in (("http", 38080), ("https", 38443)):
+        url = f"{scheme}://__LAB_INTERNAL_HOST__:{port}/fixtures/landing.html?case=ip-address-{scheme}"
+        cid = record(slug, scheme, "a[href] · IPv4", url, scope="internal", trigger="click", ip_group="internal")
+        links.append(f'<li>{link(url, f"通过 {scheme.upper()} 访问内站", cid)}<p><code>{esc(url)}</code></p></li>')
+    body = section("internal", "内站 IP 链接", "a[href] · IPv4 · HTTP / HTTPS", '<ul>'+''.join(links)+'</ul>',
+                   "当前站点的 IP 优先归为内站，即使它本身使用局域网私有地址。HTTPS 使用本站证书。")
+    for group, title, token, note in (
+        ("public", "外站 IP 链接（公网）", "PUBLIC", "目标为其他站点的公网 IPv4；可达性、证书和响应状态取决于配置的目标服务。"),
+        ("lan", "局域网 IP 链接", "LAN", "目标为其他设备的私有 IPv4，覆盖 10/8、172.16/12、192.168/16 网段；实际访问需具备对应网络连通性。"),
+    ):
+        # 未配置时，启动脚本把清单中的目标替换为 null，把样例替换为说明文字。
+        record(slug, group, "a[href] · IPv4", f"__LAB_{token}_IP_URL__", status=None,
+               trigger="click", ip_group=group)
+        body += section(group, title, "a[href] · IPv4", f"__LAB_{token}_IP_SAMPLE__", note)
+
+    hidden_path = "fixtures/hidden/ip-address-internal.html"
+    write(hidden_path, fixture_page("内站 IP 隐藏链接目标", "<p>样例编号：ip-address-hidden-internal。该目标真实存在，预期 HTTP 200。</p>"))
+    hidden_url = f"{INTERNAL_IP}/{hidden_path}"
+    cid = record(slug, "hidden-internal", "a[href] · IPv4 + CSS hidden", hidden_url,
+                 scope="internal", visibility="hidden", trigger="inspect", ip_group="internal")
+    hidden = f'<div class="lab-hidden-display" aria-hidden="true">{link(hidden_url, "内站 IP 补充资料", cid, hidden=True)}</div>'
+    body += section("visibility", "内站 IP 暗链", "a[href] · IPv4 · display: none", hidden+f'<p>本区包含真实隐藏链接 <code>{cid}</code>，可通过 DOM 与计算样式检查。</p>',
+                    "隐藏链接退出键盘焦点序列，目标地址仍保留在原始 HTML 中。", "P1")
+    dead_links = []
+    for key, path, status in (("missing", "/fixtures/missing/ip-address.html", 404),
+                              ("gone", "/lab/status/410?case=ip-address-gone", 410)):
+        url = INTERNAL_IP + path
+        cid = record(slug, key, "a[href] · IPv4", url, status, scope="internal", trigger="click", ip_group="internal")
+        dead_links.append(f'<li>{link(url, f"内站 IP 失效目标 · 预期 {status}", cid)}</li>')
+    body += section("dead-links", "内站 IP 死链响应", "HTTP 404 · HTTP 410", '<ul>'+''.join(dead_links)+'</ul>',
+                    "这两条失效链接由本站提供固定响应；公网和局域网目标不预设成功或失败状态。")
+    return body
 
 
 def category_content(slug):
@@ -202,6 +246,8 @@ def category_content(slug):
             body+=section(key,label,feature,link(url,"访问跳转样例",cid),"进入样例后跳往外站有效目标；分类页本身保持可浏览。", "P1")
         url="/lab/redirect/302/external/missing";record(slug,"dead-chain","Location → 410",url,302,scope="internal",trigger="click")
         body+=section("dead-chain","跳转后失效","302 → external → 410",link(url,"访问最终返回 410 的跳转链"),priority="P1")
+    elif slug=="ip-address":
+        body=ip_address_content()
     return body,head
 
 
@@ -209,13 +255,21 @@ def shell(title, intro, body, slug="", head=""):
     nav=''.join(f'<li><a href="/links/{s}/"{chr(32)+"aria-current=page" if s==slug else ""}>{t}</a></li>' for s,t,_,_ in CATEGORIES)
     crumbs='<a href="/">首页</a><span aria-hidden="true">/</span>'+(f'<a href="/links/">外链检测</a><span aria-hidden="true">/</span><span aria-current="page">{title}</span>' if slug else '<span aria-current="page">外链检测</span>')
     resource_note='<p class="lab-note">资源链接在新标签页打开；文件链接按浏览器设置下载。</p>' if slug else ""
+    # IP 分类不把复用同一主机的受控域名站点标成公网外站。
+    origin_note=f'<p class="lab-origin">受控外站 <code>{EXT}</code><span>主站与外站通过独立主机名区分。</span></p>'
+    external_meta=f'<meta name="lab-external-base" content="{EXT}">'
+    shared_script='<script src="/js/link-lab.js" defer></script>'
+    if slug=="ip-address":
+        origin_note='<p class="lab-origin">当前站点 IP <code>__LAB_INTERNAL_HOST__</code><span>内站优先匹配本站 IP；外站限定公网 IP；局域网使用其他设备的私有 IP。</span></p>'
+        # 纯静态 IP 页不加载域名演示脚本或元数据，避免扫描到无关的域名目标。
+        external_meta=shared_script=""
     return f'''<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{title} · Target Web</title>
-<meta name="lab-external-base" content="{EXT}"><link rel="stylesheet" href="/css/style.css"><link rel="stylesheet" href="/css/link-lab.css">{head}<script src="/js/link-lab.js" defer></script></head>
+{external_meta}<link rel="stylesheet" href="/css/style.css"><link rel="stylesheet" href="/css/link-lab.css">{head}{shared_script}</head>
 <body class="link-lab"><a class="skip-link" href="#lab-content">跳到测试内容</a><main>
 <nav class="lab-breadcrumb" aria-label="面包屑">{crumbs}</nav>
 <header class="lab-header"><div class="label">TARGET WEB / 外链检测</div><h1>{title}</h1><p class="intro">{intro}</p>{resource_note}</header>
-<p class="lab-origin">受控外站 <code>{EXT}</code><span>主站与外站通过独立主机名区分。</span></p>
+{origin_note}
 <div class="lab-layout"><aside class="lab-sidebar"><nav aria-label="测试分类"><h2>分类导航</h2><ul>{nav}</ul></nav></aside>
 <div id="lab-content" class="lab-content" tabindex="-1">{body}</div></div>
 <footer><p><a href="/links/">返回分类目录</a> · <a href="/">返回首页</a> · {link('/links/cases.json','样例对照清单')} · {link('/fixtures/SOURCES.md','资源来源')}</p><p>页面包含预置隐藏链接和失效资源，供外链检测与结果核对使用。</p></footer></main></body></html>'''
@@ -251,7 +305,9 @@ def generate():
     write("fixtures/media/sample.m3u8","#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:3\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:2.116,\nroar-hls.mp3\n#EXT-X-ENDLIST\n")
     for i,(slug,title,intro,priority) in enumerate(CATEGORIES):
         body,head=category_content(slug)
-        body+=shared_cases(slug,i)
+        # IP 页已提供专属暗链与死链，不混入依赖域名的通用外站样例。
+        if slug!="ip-address":
+            body+=shared_cases(slug,i)
         write(f"links/{slug}/index.html",shell(title,intro,body,slug,head))
     rows=[]
     for slug,title,intro,priority in CATEGORIES:

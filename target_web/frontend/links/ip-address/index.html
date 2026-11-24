@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>IP 地址链接 · Target Web</title>
+<link rel="stylesheet" href="/css/style.css"><link rel="stylesheet" href="/css/link-lab.css"></head>
+<body class="link-lab"><a class="skip-link" href="#lab-content">跳到测试内容</a><main>
+<nav class="lab-breadcrumb" aria-label="面包屑"><a href="/">首页</a><span aria-hidden="true">/</span><a href="/links/">外链检测</a><span aria-hidden="true">/</span><span aria-current="page">IP 地址链接</span></nav>
+<header class="lab-header"><div class="label">TARGET WEB / 外链检测</div><h1>IP 地址链接</h1><p class="intro">内站 IP、公网外站与局域网其他设备</p><p class="lab-note">资源链接在新标签页打开；文件链接按浏览器设置下载。</p></header>
+<p class="lab-origin">当前站点 IP <code>__LAB_INTERNAL_HOST__</code><span>内站优先匹配本站 IP；外站限定公网 IP；局域网使用其他设备的私有 IP。</span></p>
+<div class="lab-layout"><aside class="lab-sidebar"><nav aria-label="测试分类"><h2>分类导航</h2><ul><li><a href="/links/navigation/">页面跳转外链</a></li><li><a href="/links/javascript/">JavaScript 外链</a></li><li><a href="/links/css/">CSS 外链</a></li><li><a href="/links/images/">图片外链</a></li><li><a href="/links/media/">音视频外链</a></li><li><a href="/links/api/">API 外链</a></li><li><a href="/links/websocket/">WebSocket 外链</a></li><li><a href="/links/iframe/">iframe 外链</a></li><li><a href="/links/downloads/">文件下载外链</a></li><li><a href="/links/fonts/">字体外链</a></li><li><a href="/links/forms/">表单提交外链</a></li><li><a href="/links/redirects/">重定向外链</a></li><li><a href="/links/ip-address/" aria-current=page>IP 地址链接</a></li></ul></nav></aside>
+<div id="lab-content" class="lab-content" tabindex="-1"><section class="lab-section" id="internal">
+      <div class="lab-section-heading"><h2>内站 IP 链接</h2><span class="lab-priority">P0</span></div>
+      <p class="lab-feature"><code>a[href] · IPv4 · HTTP / HTTPS</code></p>
+      <div class="lab-demo"><ul><li><a href="http://__LAB_INTERNAL_HOST__:38080/fixtures/landing.html?case=ip-address-http" target="_blank" rel="noopener" data-case-id="ip-address-http">通过 HTTP 访问内站</a><p><code>http://__LAB_INTERNAL_HOST__:38080/fixtures/landing.html?case=ip-address-http</code></p></li><li><a href="https://__LAB_INTERNAL_HOST__:38443/fixtures/landing.html?case=ip-address-https" target="_blank" rel="noopener" data-case-id="ip-address-https">通过 HTTPS 访问内站</a><p><code>https://__LAB_INTERNAL_HOST__:38443/fixtures/landing.html?case=ip-address-https</code></p></li></ul></div><p class="lab-note">当前站点的 IP 优先归为内站，即使它本身使用局域网私有地址。HTTPS 使用本站证书。</p></section><section class="lab-section" id="public">
+      <div class="lab-section-heading"><h2>外站 IP 链接（公网）</h2><span class="lab-priority">P0</span></div>
+      <p class="lab-feature"><code>a[href] · IPv4</code></p>
+      <div class="lab-demo">__LAB_PUBLIC_IP_SAMPLE__</div><p class="lab-note">目标为其他站点的公网 IPv4；可达性、证书和响应状态取决于配置的目标服务。</p></section><section class="lab-section" id="lan">
+      <div class="lab-section-heading"><h2>局域网 IP 链接</h2><span class="lab-priority">P0</span></div>
+      <p class="lab-feature"><code>a[href] · IPv4</code></p>
+      <div class="lab-demo">__LAB_LAN_IP_SAMPLE__</div><p class="lab-note">目标为其他设备的私有 IPv4，覆盖 10/8、172.16/12、192.168/16 网段；实际访问需具备对应网络连通性。</p></section><section class="lab-section" id="visibility">
+      <div class="lab-section-heading"><h2>内站 IP 暗链</h2><span class="lab-priority">P1</span></div>
+      <p class="lab-feature"><code>a[href] · IPv4 · display: none</code></p>
+      <div class="lab-demo"><div class="lab-hidden-display" aria-hidden="true"><a href="https://__LAB_INTERNAL_HOST__:38443/fixtures/hidden/ip-address-internal.html" target="_blank" rel="noopener" data-case-id="ip-address-hidden-internal" tabindex="-1">内站 IP 补充资料</a></div><p>本区包含真实隐藏链接 <code>ip-address-hidden-internal</code>，可通过 DOM 与计算样式检查。</p></div><p class="lab-note">隐藏链接退出键盘焦点序列，目标地址仍保留在原始 HTML 中。</p></section><section class="lab-section" id="dead-links">
+      <div class="lab-section-heading"><h2>内站 IP 死链响应</h2><span class="lab-priority">P0</span></div>
+      <p class="lab-feature"><code>HTTP 404 · HTTP 410</code></p>
+      <div class="lab-demo"><ul><li><a href="https://__LAB_INTERNAL_HOST__:38443/fixtures/missing/ip-address.html" target="_blank" rel="noopener" data-case-id="ip-address-missing">内站 IP 失效目标 · 预期 404</a></li><li><a href="https://__LAB_INTERNAL_HOST__:38443/lab/status/410?case=ip-address-gone" target="_blank" rel="noopener" data-case-id="ip-address-gone">内站 IP 失效目标 · 预期 410</a></li></ul></div><p class="lab-note">这两条失效链接由本站提供固定响应；公网和局域网目标不预设成功或失败状态。</p></section></div></div>
+<footer><p><a href="/links/">返回分类目录</a> · <a href="/">返回首页</a> · <a href="/links/cases.json" target="_blank" rel="noopener" data-case-id="">样例对照清单</a> · <a href="/fixtures/SOURCES.md" target="_blank" rel="noopener" data-case-id="">资源来源</a></p><p>页面包含预置隐藏链接和失效资源，供外链检测与结果核对使用。</p></footer></main></body></html>

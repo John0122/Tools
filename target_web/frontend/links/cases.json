@@ -61,6 +61,11 @@
       "slug": "redirects",
       "title": "重定向外链",
       "path": "/links/redirects/"
+    },
+    {
+      "slug": "ip-address",
+      "title": "IP 地址链接",
+      "path": "/links/ip-address/"
     }
   ],
   "cases": [
@@ -1707,6 +1712,97 @@
       "visibility": "collapsed",
       "method": "GET",
       "trigger": "expand-and-click"
+    },
+    {
+      "id": "ip-address-http",
+      "category": "ip-address",
+      "page": "/links/ip-address/",
+      "feature": "a[href] · IPv4",
+      "target": "http://__LAB_INTERNAL_HOST__:38080/fixtures/landing.html?case=ip-address-http",
+      "expected_status": 200,
+      "scope": "internal",
+      "visibility": "visible",
+      "method": "GET",
+      "trigger": "click",
+      "ip_group": "internal"
+    },
+    {
+      "id": "ip-address-https",
+      "category": "ip-address",
+      "page": "/links/ip-address/",
+      "feature": "a[href] · IPv4",
+      "target": "https://__LAB_INTERNAL_HOST__:38443/fixtures/landing.html?case=ip-address-https",
+      "expected_status": 200,
+      "scope": "internal",
+      "visibility": "visible",
+      "method": "GET",
+      "trigger": "click",
+      "ip_group": "internal"
+    },
+    {
+      "id": "ip-address-public",
+      "category": "ip-address",
+      "page": "/links/ip-address/",
+      "feature": "a[href] · IPv4",
+      "target": "__LAB_PUBLIC_IP_URL__",
+      "expected_status": null,
+      "scope": "external",
+      "visibility": "visible",
+      "method": "GET",
+      "trigger": "click",
+      "ip_group": "public"
+    },
+    {
+      "id": "ip-address-lan",
+      "category": "ip-address",
+      "page": "/links/ip-address/",
+      "feature": "a[href] · IPv4",
+      "target": "__LAB_LAN_IP_URL__",
+      "expected_status": null,
+      "scope": "external",
+      "visibility": "visible",
+      "method": "GET",
+      "trigger": "click",
+      "ip_group": "lan"
+    },
+    {
+      "id": "ip-address-hidden-internal",
+      "category": "ip-address",
+      "page": "/links/ip-address/",
+      "feature": "a[href] · IPv4 + CSS hidden",
+      "target": "https://__LAB_INTERNAL_HOST__:38443/fixtures/hidden/ip-address-internal.html",
+      "expected_status": 200,
+      "scope": "internal",
+      "visibility": "hidden",
+      "method": "GET",
+      "trigger": "inspect",
+      "ip_group": "internal"
+    },
+    {
+      "id": "ip-address-missing",
+      "category": "ip-address",
+      "page": "/links/ip-address/",
+      "feature": "a[href] · IPv4",
+      "target": "https://__LAB_INTERNAL_HOST__:38443/fixtures/missing/ip-address.html",
+      "expected_status": 404,
+      "scope": "internal",
+      "visibility": "visible",
+      "method": "GET",
+      "trigger": "click",
+      "ip_group": "internal"
+    },
+    {
+      "id": "ip-address-gone",
+      "category": "ip-address",
+      "page": "/links/ip-address/",
+      "feature": "a[href] · IPv4",
+      "target": "https://__LAB_INTERNAL_HOST__:38443/lab/status/410?case=ip-address-gone",
+      "expected_status": 410,
+      "scope": "internal",
+      "visibility": "visible",
+      "method": "GET",
+      "trigger": "click",
+      "ip_group": "internal"
     }
   ]
 }

@@ -6,7 +6,7 @@
 
 | 工具 | 用途 | 技术栈 | 文档 |
 | --- | --- | --- | --- |
-| `target_web` | Web 靶机，提供九种 HTTP 方法与 12 类外链检测页面，包含真实接口、资源、站内外暗链和死链 | 原生 HTML / JavaScript / CSS、Go、Nginx、Docker Compose | [使用说明](target_web/README.md) |
+| `target_web` | Web 靶机，提供九种 HTTP 方法与 13 类链接检测页面，包含 IP 地址分类、真实接口、资源、站内外暗链和死链 | 原生 HTML / JavaScript / CSS、Go、Nginx、Docker Compose | [使用说明](target_web/README.md) |
 
 ## 快速启动 target_web
 
@@ -34,7 +34,7 @@ cd target_web
 
 页面支持 GET、HEAD、POST、PUT、PATCH、DELETE、OPTIONS、TRACE、CONNECT 九种方法，展示真实响应的状态码、耗时、响应头和正文。其中 TRACE、CONNECT 由后端向固定接口代发；CONNECT 返回 501 和方法说明，不建立隧道。
 
-首页“外链检测”进入 `/links/` 二级目录，再访问 12 个分类页。分类页包含真实 HTML 标签、动态请求、GraphQL、WebSocket、表单与重定向，以及站内/站外隐藏链接和失效链接。受控外站默认 `pz-target-web.com`，需要在访问设备的 DNS 或 hosts 中指向部署 IP，详见 [外链检测页面](target_web/README.md#外链检测页面)。
+首页“外链检测”进入 `/links/` 二级目录，再访问 13 个分类页。分类页包含真实 HTML 标签、动态请求、GraphQL、WebSocket、表单与重定向，以及站内/站外隐藏链接和失效链接。“IP 地址链接”按内站、公网外站、局域网其他设备分组，地址配置见 [IP 地址链接配置](target_web/README.md#ip-地址链接配置)。其他分类的受控外站默认 `pz-target-web.com`，需要在访问设备的 DNS 或 hosts 中指向部署 IP，详见 [外链检测页面](target_web/README.md#外链检测页面)。
 
 在 `target_web/` 目录中管理服务：
 
