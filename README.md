@@ -63,10 +63,14 @@ Tools/
     ├── backend/              # Go API 服务与后端 Dockerfile
     ├── scripts/              # 证书、分类页面与演示资源生成脚本
     ├── build.sh              # 编译产物并构建前后端镜像
+    ├── package.sh            # 构建并导出双镜像离线部署包
+    ├── deploy.sh             # 校验、导入离线包并部署
     ├── compose.yaml          # 双容器部署配置
     ├── target_web.sh         # 启动与管理入口
     └── README.md             # 完整使用说明
 ```
+
+将服务部署到另一台机器时，在 `target_web/` 运行 `./package.sh --arch amd64`，复制生成的压缩包，解压后运行 `./deploy.sh`；目标机器无需 Go。详见 [离线打包与部署](target_web/README.md#离线打包与部署)。
 
 镜像标签、目标架构、独立构建和运行已有镜像的方法见 [镜像编译与构建](target_web/README.md#镜像编译与构建)。
 

@@ -44,6 +44,9 @@ target_web/
 ├── DESIGN.md                  # 页面设计约定
 ├── build.sh                   # 本机编译、产物整理与双镜像构建
 ├── build/                     # 临时构建上下文，自动清理且不入库
+├── package.sh                 # 构建并导出双镜像离线包
+├── deploy.sh                  # 在解压目录校验、导入并部署
+├── dist/                      # 离线压缩包，不入库
 ├── compose.yaml
 └── target_web.sh
 ```
@@ -102,6 +105,51 @@ TARGET_WEB_IMAGE_TAG=dev-demo ./target_web.sh up --no-build --host 192.168.5.10
 ```
 
 Compose 只负责运行已构建镜像，设置 `pull_policy: never`，不从仓库拉取业务镜像。默认标签由 `TARGET_WEB_IMAGE_TAG` 指定，未设置时为 `local`；`--version` 只影响本次构建，使用其他标签启动时需设置同一个环境变量。不要直接将源码目录传给这两个 Dockerfile；请使用 `build.sh` 准备上下文。
+
+## 离线打包与部署
+
+`package.sh` 在构建机器生成离线压缩包，`deploy.sh` 在目标机器解压目录执行。运行包包含前后端两个镜像、Compose 配置、管理脚本、证书生成脚本、IP 校验器和本说明；不包含 Go/前端源码、开发工具链、缓存及已有证书或私钥。静态页面及演示资源已包含在前端镜像中。
+
+构建机器需要 Docker、Go 和 tar，以及 `sha256sum` 或 `shasum`。默认标签为 `local`，架构默认为 Docker 服务架构；给不同架构的目标机器部署时需显式选择：
+
+```bash
+cd target_web
+./package.sh --arch amd64       # 常见 x86_64 Linux 服务器
+./package.sh --arch arm64       # ARM64 目标机器
+
+# 指定镜像标签与输出目录
+./package.sh --version lab-demo --arch amd64 --output ./dist/demo
+
+# 镜像已由 build.sh 构建时，仅导出，不重新编译或拉取
+./package.sh --version lab-demo --arch amd64 --no-build
+```
+
+默认产物为 `dist/target-web-<标签>-linux-<架构>.tar.gz`。已有同名包会报错，需更换标签或输出目录；脚本不会覆盖现有包。打包先检查两个镜像的 Linux 平台和 ID，再执行 `docker image save`，生成 `bundle.env` 元数据与 `SHA256SUMS` 文件校验清单，最后压缩并原子输出。失败或中断时清理本次临时目录；`dist/` 不进入 Git。
+
+多平台镜像按目标架构检查；旧版 Docker 不支持指定平台检查时，回退到默认详情并继续核对架构。导出沿用兼容旧引擎的方式，镜像缓存含多个平台时，包内可能附带其他平台数据；部署仍要求目标机器与指定架构一致。相关参数见 Docker 的 [image inspect](https://docs.docker.com/reference/cli/docker/image/inspect/) 与 [image save](https://docs.docker.com/reference/cli/docker/image/save/) 文档。
+
+将压缩包复制到目标机器后解压。目标机器需要 Bash、Docker、Compose v2（支持 `up --wait`）、OpenSSL 1.1.1 或更新版本、AWK、tar 和 `sha256sum`/`shasum`，无需 Go，也无需拉取基础镜像。支持 macOS/Linux 的 Linux 容器环境；目标 Docker 架构必须与包一致。
+
+```bash
+tar -xzf target-web-local-linux-amd64.tar.gz
+cd target-web-local-linux-amd64
+./deploy.sh
+
+# 多网卡或自动部署时，显式设置本站和另一套服务的局域网 IP
+./deploy.sh --host 192.168.5.10 --lan-ip 192.168.5.20
+```
+
+部署先校验包内文件、元数据、目标架构及 Compose 配置，校验通过才导入镜像；导入后检查镜像 ID，随后调用 `target_web.sh up --no-build`。本站 IP 自动检测失败时使用 `--host`；未配置局域网链接时提示输入另一台设备的私有 IPv4，回车可跳过。证书在解压目录的 `certs/` 生成或复用，两个容器健康后输出 HTTP 38080 和 HTTPS 38443 入口。
+
+部署镜像标签固定取包内元数据。包内直接执行 `target_web.sh up` 也会沿用该标签并跳过构建；首次部署仍须使用 `deploy.sh` 导入镜像。环境变量 `TARGET_WEB_EXTERNAL_HOST` 和 `TARGET_WEB_LAN_IP_ORIGIN` 的用法与源码启动一致；运行脚本不保存这些配置，后续部署需再次传入。部署不修改系统 DNS/hosts、代理或证书信任，域名解析按下文配置。
+
+```bash
+./target_web.sh status
+./target_web.sh logs
+./target_web.sh down
+```
+
+保留解压目录作为运行目录，运行期间不要移动或删除它，其中的证书目录通过只读挂载供前端使用。更新时可在新的包目录执行 `deploy.sh`，同一 Docker 上的 `target-web` Compose 项目会重建为新镜像；新目录会生成自己的证书，因此 HTTPS 客户端可能需要重新信任。再次部署时应显式传入原有域名和局域网配置。
 
 ## 页面与 API
 

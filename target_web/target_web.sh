@@ -21,6 +21,7 @@ up 未配置局域网入口时提示输入另一台设备的私有 IPv4，回车
 --lan-ip 仅用于 up，生成 https://<IPv4>:38443/，适合非交互部署。
 也可沿用 TARGET_WEB_LAN_IP_ORIGIN 指定 HTTP(S) 入口；非交互且未配置时跳过。
 --no-build 仅用于 up，直接使用本地已有的两个镜像；完整构建需要本机 Go。
+离线包中的 up 默认跳过构建；首次部署请使用 ./deploy.sh 导入镜像。
 对外开放 HTTP：38080（映射 8080）、HTTPS：38443（映射 8443）；后端内部 API：8000。
 EOF
 }
@@ -114,6 +115,14 @@ esac
 
 [[ "$no_build" == false || "$command" == up ]] || die "--no-build 仅用于 up"
 [[ -z "$lan_ip" || "$command" == up ]] || die "--lan-ip 仅用于 up"
+
+# 离线包再次启动时沿用包内标签并跳过构建；只读取数据，不执行元数据文件。
+if [[ -f "$ROOT/bundle.env" ]]; then
+  bundle_tag=$(awk -F= '$1 == "image_tag" {print $2}' "$ROOT/bundle.env")
+  [[ "$bundle_tag" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]] || die "离线包镜像标签无效，请重新解压完整部署包"
+  export TARGET_WEB_IMAGE_TAG="$bundle_tag"
+  if [[ "$command" == up ]]; then no_build=true; fi
+fi
 
 if [[ "$command" != cert ]]; then
   command -v docker >/dev/null 2>&1 || die "请先安装 Docker 和 Docker Compose v2"
