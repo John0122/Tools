@@ -1,6 +1,6 @@
 # target_web
 
-通过 Docker 运行的 Web 靶机。前端使用原生 HTML、JavaScript、CSS，由 Nginx 提供页面和 HTTPS；Go 后端提供九种 HTTP 方法及外链检测所需的真实接口。前后端分别构建镜像、分别运行容器。
+通过 Docker 运行的 Web 靶机。前端使用原生 HTML、JavaScript、CSS，由 Nginx 提供 HTTP/HTTPS 页面；Go 后端提供九种 HTTP 方法及外链检测所需的真实接口。前后端分别构建镜像、分别运行容器。
 
 打开页面即可点击接口列表，真实发送请求，查看状态码、耗时、响应头和正文。
 
@@ -9,17 +9,17 @@
 ## 部署结构
 
 ```text
-浏览器 ── HTTPS :38443 ── frontend（Nginx）
+浏览器 ── HTTP :38080 / HTTPS :38443 ── frontend（Nginx）
                               ├── 首页、/links/、/fixtures/
                               └── /api、/lab/、/healthz ── backend（Go :8000）
 ```
 
 | 服务 | 镜像 | 产物准备 | 监听与职责 |
 | --- | --- | --- | --- |
-| frontend | `target-web-frontend:local` | 整理 `frontend/` 静态文件 | 仅发布 38443→8443；静态文件、TLS、API 反向代理 |
+| frontend | `target-web-frontend:local` | 整理 `frontend/` 静态文件 | 发布 38080→8080、38443→8443；静态文件、TLS、API 反向代理 |
 | backend | `target-web-backend:local` | 本机交叉编译 `backend/` | 仅在 Docker 网络内监听 8000；API 与受限代发接口 |
 
-外部通过 HTTPS 38443 访问页面和接口；容器内 HTTP 8080 保留健康检查，不映射到宿主机。浏览器使用同源 `/api`，无需配置跨域。后端不包含源码、前端文件或本机 IP 证书/私钥，不发布宿主机端口。Nginx 通过 Docker DNS 自动跟踪后端容器地址变化。
+外部通过 HTTP 38080 或 HTTPS 38443 访问页面和接口，两个入口提供相同内容，不强制跳转协议；容器内 HTTP 8080 同时用于健康检查。浏览器使用同源 `/api`，无需配置跨域。后端不包含源码、前端文件或本机 IP 证书/私钥，不发布宿主机端口。Nginx 通过 Docker DNS 自动跟踪后端容器地址变化。
 
 ```text
 target_web/
@@ -68,7 +68,7 @@ cd target_web
 
 ```bash
 export TARGET_WEB_HOST=192.168.5.10
-export TARGET_WEB_EXTERNAL_HOST=pz-target-web.com
+export TARGET_WEB_EXTERNAL_HOST=www.pz-target-web.com
 ./build.sh
 ./target_web.sh cert --host "$TARGET_WEB_HOST"
 docker compose up -d --no-build --force-recreate --remove-orphans --wait
@@ -181,29 +181,31 @@ curl --noproxy '*' --cacert certs/fullchain.pem -X PATCH https://127.0.0.1:38443
 | `images/` | 图片 | PNG/JPG/GIF/SVG/WebP、picture/source、srcset |
 | `media/` | 音视频 | MP4、MP3、M3U8、source、外站播放器 |
 | `api/` | API | Fetch GET、XHR POST、GraphQL 查询与变量、失效接口 |
-| `websocket/` | WebSocket | WSS 握手、文本回显、心跳、关闭 |
+| `websocket/` | WebSocket | WS / WSS 握手、文本回显、心跳、关闭 |
 | `iframe/` | 嵌入页面 | 独立文档、地图示意、状态组件、失效 iframe |
 | `downloads/` | 文件下载 | 有效 PDF/DOCX/ZIP/EXE 与附件响应头 |
 | `fonts/` | 字体 | @font-face 加载 WOFF/WOFF2/TTF/OTF |
 | `forms/` | 表单 | 原生 GET、POST urlencoded/multipart、formaction 覆盖 |
 | `redirects/` | 重定向 | 301/302/303/307/308、Meta Refresh、JS 跳转、失效跳转链 |
-| `ip-address/` | IP 地址链接 | 内站 HTTPS、公网外站、局域网其他设备、内站 IP 暗链与 404/410 |
+| `ip-address/` | IP 地址链接 | 内站 HTTP/HTTPS、公网外站、局域网其他设备、内站 IP 暗链与 404/410 |
 
 前 12 个分类页还包含站内暗链、站外暗链、站内 404、站外 410，以及正常折叠内容对照。IP 分类单独提供内站 IP 暗链和真实 404/410，不混入域名外站样例，也不预设公网或局域网服务的响应。暗链真实存在于 DOM，通过隐藏容器、透明或屏外定位隐藏；隐藏目标不在普通可见链接中重复出现。暗链表示可见性，死链表示可达性，站内/站外表示归属，这些维度分别记录。正常 script/link 资源声明不因为不可见就被当成暗链。
 
-`/links/cases.json` 提供 142 条样例记录，包含固定编号、页面、技术特征、目标、方法、触发方式、可见性和预期 HTTP 状态，是结果核对清单；需要独立衡量发现能力时，不把清单作为扫描起点。IP 分类占 6 条，公网目标固定为 `https://1.1.1.1/cdn-cgi/trace`；局域网目标未配置时 `target` 为 null，页面显示未配置说明。IP 记录另含 `ip_group`，取值为 `internal`、`public`、`lan`；原有 `scope` 继续表示站点归属，公网和局域网其他设备都为 `external`。这两个目标的 `expected_status` 始终为 null，表示不预设响应状态。跳转记录的状态是第一跳，仍应跟踪最终目标。DNS 预取与预连接没有 HTTP 响应，其方法和状态字段为 null。资源提示和社交元数据不保证浏览器主动请求；动态按钮、表单和 WSS 需要实际交互触发。
+`/links/cases.json` 提供 144 条样例记录，包含固定编号、页面、技术特征、目标、方法、触发方式、可见性和预期 HTTP 状态，是结果核对清单；需要独立衡量发现能力时，不把清单作为扫描起点。IP 分类占 7 条，公网目标固定为 `https://1.1.1.1/cdn-cgi/trace`；局域网目标未配置时 `target` 为 null，页面显示未配置说明。IP 记录另含 `ip_group`，取值为 `internal`、`public`、`lan`；原有 `scope` 继续表示站点归属，公网和局域网其他设备都为 `external`。这两个目标的 `expected_status` 始终为 null，表示不预设响应状态。跳转记录的状态是第一跳，仍应跟踪最终目标。DNS 预取与预连接没有 HTTP 响应，其方法和状态字段为 null。资源提示和社交元数据不保证浏览器主动请求；动态按钮、表单和 WS/WSS 需要实际交互触发。
 
 图片、字体、媒体和下载均为实际文件；`sample.exe` 是仅打印说明的 Windows 程序。M3U8 引用有效 MP3 Packed Audio 分片，播放需要原生支持 HLS 的浏览器。预置 404/410 会出现在浏览器网络面板和控制台中，这是正常测试数据。
 
 ### 受控外站配置
 
-外站默认 `pz-target-web.com`，与主站 IP 属于不同主机名/来源，但复用同一个前端容器、IP 和端口；无需第三个镜像。外站只提供演示资源和 `/lab/`，不提供主站首页或 `/api` 控制台。每个浏览器或扫描器所在设备都需配置 DNS/hosts，例如部署 IP 为 `192.168.5.10` 时：
+样例域名默认 `www.pz-target-web.com`，与主站 IP 属于不同主机名/来源，复用同一个前端容器、IP 和端口；无需第三个镜像。访问 `https://www.pz-target-web.com:38443/` 直接打开完整靶机首页，支持 `/links/` 分类页、静态资源、同源 `/api`、`/lab/` 和 `/healthz`；原有 `/fixtures/landing.html` 等演示地址继续可用。每个浏览器或扫描器所在设备都需配置 DNS/hosts，例如部署 IP 为 `192.168.5.10` 时：
 
 ```text
-192.168.5.10 pz-target-web.com
+192.168.5.10 www.pz-target-web.com
 ```
 
-部署脚本不修改系统 hosts 或证书信任。自签名证书同时覆盖主站 IP 和外站域名，浏览器需要允许或信任两个入口使用的证书，外站 HTTPS 子资源才能加载。可先访问 `https://pz-target-web.com:38443/fixtures/landing.html` 检查。页面引用 HTTPS 外站资源，WebSocket 使用同一端口的 WSS。
+部署脚本不修改系统 hosts 或证书信任。自签名证书同时覆盖主站 IP 和样例域名，浏览器需要允许或信任两个入口使用的证书，HTTPS 子资源才能加载。可先访问 `https://www.pz-target-web.com:38443/` 检查首页。页面引用 HTTPS 样例资源；HTTP 页面可测试 WS 38080 和 WSS 38443，HTTPS 页面只启用 WSS，避免混合内容阻止连接。
+
+外链清单的站内/站外标记以 IP 入口为对照：从 IP 访问时，样例域名用于站外测试；从域名访问时，指向相同域名的资源属于站内。需要核对清单中的站外样例时，从 `https://<靶机IP>:38443/links/` 开始扫描。两个入口都保留真实 404/410，不将缺失资源回退到首页。
 
 使用系统或浏览器代理时，将部署 IP 和外站域名加入直连列表；hosts 映射不能保证代理服务器也能解析该域名。命令行示例使用 `--noproxy '*'` 直接访问本地靶机。
 
@@ -217,8 +219,8 @@ TARGET_WEB_EXTERNAL_HOST=resources.lab.test ./target_web.sh up --host 192.168.5.
 
 ```bash
 curl --noproxy '*' --cacert certs/fullchain.pem \
-  --resolve pz-target-web.com:38443:192.168.5.10 \
-  https://pz-target-web.com:38443/fixtures/landing.html
+  --resolve www.pz-target-web.com:38443:192.168.5.10 \
+  https://www.pz-target-web.com:38443/fixtures/landing.html
 ```
 
 ### IP 地址链接配置
@@ -227,7 +229,7 @@ curl --noproxy '*' --cacert certs/fullchain.pem \
 
 | 分组 | 地址来源 | 约束 |
 | --- | --- | --- |
-| 内站 | `TARGET_WEB_HOST`，由启动脚本检测或 `--host` 指定 | 本站 IP 优先归内站，即使它使用私有地址；提供 HTTPS 38443 样例 |
+| 内站 | `TARGET_WEB_HOST`，由启动脚本检测或 `--host` 指定 | 本站 IP 优先归内站，即使它使用私有地址；提供 HTTP 38080 和 HTTPS 38443 样例 |
 | 外站（公网） | 固定为 `https://1.1.1.1/cdn-cgi/trace` | 通过公网 IPv4 访问诊断文本，保留完整路径 |
 | 局域网 | 部署时输入 IP，或使用 `--lan-ip` / `TARGET_WEB_LAN_IP_ORIGIN` | 另一套服务所在设备的 RFC 1918 私有 IPv4，不能重复本站 IP |
 
@@ -270,7 +272,7 @@ TARGET_WEB_LAN_IP_ORIGIN=https://192.168.5.20:38443 \
 | `/lab/status/404`、`/lab/status/410` | GET/HEAD | 对应真实错误状态，附 X-Lab-Case |
 | `/lab/redirect/{code}/{scope}/{target}` | GET/HEAD | code 为 301/302/303/307/308，scope 为 internal/external，target 为 ok/missing；只跳转到固定演示目标 |
 
-以上已知路径提供 OPTIONS；不支持的方法返回 405，未知路径返回 404。JSON 与表单请求体上限 16 KiB；只接收演示文本，不接收文件上传。`/lab/` 允许的来源为配置主站 IP、localhost/回环和外站主机名对应的 HTTPS 38443 入口，未配置来源与 `Origin: null` 返回 403。公开静态演示资源允许无凭据跨域；媒体支持 Range，文件返回正确类型及 Content-Disposition。重定向不接受任意 URL。
+以上已知路径提供 OPTIONS；不支持的方法返回 405，未知路径返回 404。JSON 与表单请求体上限 16 KiB；只接收演示文本，不接收文件上传。`/lab/` 允许的来源为配置主站 IP、localhost/回环和外站主机名对应的 HTTP 38080 和 HTTPS 38443 入口，未配置来源与 `Origin: null` 返回 403。公开静态演示资源允许无凭据跨域；媒体支持 Range，文件返回正确类型及 Content-Disposition。重定向不接受任意 URL。
 
 协议依赖锁定为 `github.com/graphql-go/graphql v0.8.1`、`github.com/coder/websocket v1.8.15`，没有前端第三方运行依赖。媒体、照片与字体的来源、独立许可证见 [资源说明](frontend/fixtures/SOURCES.md)。
 

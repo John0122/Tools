@@ -910,6 +910,18 @@
       "trigger": "expand-and-click"
     },
     {
+      "id": "websocket-ws",
+      "category": "websocket",
+      "page": "/links/websocket/",
+      "feature": "new WebSocket()",
+      "target": "ws://__LAB_EXTERNAL_HOST__:38080/lab/ws",
+      "expected_status": 101,
+      "scope": "external",
+      "visibility": "visible",
+      "method": "GET",
+      "trigger": "click"
+    },
+    {
       "id": "websocket-wss",
       "category": "websocket",
       "page": "/links/websocket/",
@@ -1700,6 +1712,19 @@
       "visibility": "collapsed",
       "method": "GET",
       "trigger": "expand-and-click"
+    },
+    {
+      "id": "ip-address-http",
+      "category": "ip-address",
+      "page": "/links/ip-address/",
+      "feature": "a[href] · IPv4",
+      "target": "http://__LAB_INTERNAL_HOST__:38080/fixtures/landing.html?case=ip-address-http",
+      "expected_status": 200,
+      "scope": "internal",
+      "visibility": "visible",
+      "method": "GET",
+      "trigger": "click",
+      "ip_group": "internal"
     },
     {
       "id": "ip-address-https",

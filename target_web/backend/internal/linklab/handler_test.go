@@ -9,7 +9,8 @@ import (
 
 // 实际 HTTP 响应验证：错误状态、输入拒绝和跳转目标必须对扫描器可见。
 func TestLabHTTP(t *testing.T) {
-	h, err := NewHandler(Config{ExternalHost: "pz-target-web.com", PrimaryHost: "192.168.5.30"})
+	// 测试配置沿用部署使用的完整外站主机名。
+	h, err := NewHandler(Config{ExternalHost: "www.pz-target-web.com", PrimaryHost: "192.168.5.30"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -35,7 +36,12 @@ func TestLabHTTP(t *testing.T) {
 		{"wrong-method", "DELETE", "/lab/rest", "", "", "", 405, "error"},
 		{"bad-origin", "GET", "/lab/rest", "", "", "https://attacker.test", 403, "error"},
 		{"origin-null", "GET", "/lab/rest", "", "", "null", 403, "error"},
-		{"allowed-origin", "GET", "/lab/rest", "", "", "https://192.168.5.30:38443", 200, "target_web"},
+		// 恢复 HTTP 后仍拒绝容器端口及协议、端口错配，CORS 不使用宽泛通配。
+		{"allowed-origin-https", "GET", "/lab/rest", "", "", "https://192.168.5.30:38443", 200, "target_web"},
+		{"allowed-origin-http", "GET", "/lab/rest", "", "", "http://192.168.5.30:38080", 200, "target_web"},
+		{"allowed-origin-domain-http", "GET", "/lab/rest", "", "", "http://www.pz-target-web.com:38080", 200, "target_web"},
+		{"internal-port", "GET", "/lab/rest", "", "", "http://192.168.5.30:8080", 403, "error"},
+		{"mismatched-port", "GET", "/lab/rest", "", "", "https://192.168.5.30:38080", 403, "error"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -50,7 +56,7 @@ func TestLabHTTP(t *testing.T) {
 			if tc.status == 403 && w.Header().Get("Access-Control-Allow-Origin") != "" {
 				t.Fatal("unapproved origin allowed")
 			}
-			if tc.name == "allowed-origin" && w.Header().Get("Access-Control-Allow-Origin") != tc.origin {
+			if strings.HasPrefix(tc.name, "allowed-origin-") && w.Header().Get("Access-Control-Allow-Origin") != tc.origin {
 				t.Fatal("CORS missing")
 			}
 		})
@@ -58,23 +64,23 @@ func TestLabHTTP(t *testing.T) {
 }
 
 func TestLabRedirectAndPreflight(t *testing.T) {
-	h, _ := NewHandler(Config{ExternalHost: "pz-target-web.com", PrimaryHost: "127.0.0.1"})
+	h, _ := NewHandler(Config{ExternalHost: "www.pz-target-web.com", PrimaryHost: "127.0.0.1"})
 	defer h.Close()
 	for _, code := range []string{"301", "302", "303", "307", "308"} {
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, httptest.NewRequest("GET", "/lab/redirect/"+code+"/external/ok?url=https://attacker.test", nil))
-		if !strings.HasPrefix(w.Header().Get("Location"), "https://pz-target-web.com:38443/fixtures/landing.html") || strings.Contains(w.Header().Get("Location"), "attacker") {
+		if !strings.HasPrefix(w.Header().Get("Location"), "https://www.pz-target-web.com:38443/fixtures/landing.html") || strings.Contains(w.Header().Get("Location"), "attacker") {
 			t.Fatalf("redirect = %d %s", w.Code, w.Header().Get("Location"))
 		}
 	}
 	r := httptest.NewRequest("OPTIONS", "/lab/rest", nil)
-	// 预检使用唯一对外发布的 HTTPS 来源，与浏览器入口保持一致。
-	r.Header.Set("Origin", "https://localhost:38443")
+	// HTTP 入口同样需要支持浏览器的跨域预检。
+	r.Header.Set("Origin", "http://localhost:38080")
 	r.Header.Set("Access-Control-Request-Method", "POST")
 	r.Header.Set("Access-Control-Request-Headers", "content-type")
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
-	if w.Code != 204 || w.Header().Get("Access-Control-Allow-Origin") != "https://localhost:38443" {
+	if w.Code != 204 || w.Header().Get("Access-Control-Allow-Origin") != "http://localhost:38080" {
 		t.Fatalf("preflight %d %v", w.Code, w.Header())
 	}
 	r.Header.Set("Access-Control-Request-Method", "DELETE")
@@ -99,7 +105,7 @@ func TestLabConfigAndReturnedInput(t *testing.T) {
 			t.Fatalf("accepted %q", host)
 		}
 	}
-	h, err := NewHandler(Config{ExternalHost: "pz-target-web.com", PrimaryHost: "127.0.0.1"})
+	h, err := NewHandler(Config{ExternalHost: "www.pz-target-web.com", PrimaryHost: "127.0.0.1"})
 	if err != nil {
 		t.Fatal(err)
 	}

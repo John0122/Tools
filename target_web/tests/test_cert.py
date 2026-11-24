@@ -63,9 +63,10 @@ class CertificateTests(unittest.TestCase):
         self.assertEqual(self.key.stat().st_mode & 0o777, 0o600)
 
     def test_external_hostname_is_in_certificate(self):
+        # 地址校验覆盖带 www 的完整主机名，避免仅包含裸域名的证书被误用。
         self.assert_generated()
         self.openssl("verify", "-CAfile", self.cert, "-verify_hostname",
-                     "pz-target-web.com", self.cert)
+                     "www.pz-target-web.com", self.cert)
 
     def test_external_hostname_change_renews_certificate(self):
         self.assert_generated()

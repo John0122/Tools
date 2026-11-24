@@ -35,7 +35,8 @@ var dnsLabel = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`)
 
 func NewHandler(c Config) (*Handler, error) {
 	if c.ExternalHost == "" {
-		c.ExternalHost = "pz-target-web.com"
+		// 与部署及证书默认值一致，确保来源校验和固定跳转使用同一外站。
+		c.ExternalHost = "www.pz-target-web.com"
 	}
 	if c.PrimaryHost == "" {
 		c.PrimaryHost = "127.0.0.1"
@@ -52,8 +53,9 @@ func NewHandler(c Config) (*Handler, error) {
 		return nil, fmt.Errorf("主站访问地址必须是 IP")
 	}
 	h := &Handler{external: c.ExternalHost, origins: map[string]bool{}, connections: map[*websocket.Conn]struct{}{}}
-	// 浏览器只从对外发布的 HTTPS 入口访问；容器内 HTTP 不加入跨域来源。
+	// 只接纳 Compose 已发布的两个入口，不放宽到任意协议或端口。
 	for _, host := range []string{c.PrimaryHost, "127.0.0.1", "localhost", "::1", c.ExternalHost} {
+		h.origins["http://"+net.JoinHostPort(host, "38080")] = true
 		h.origins["https://"+net.JoinHostPort(host, "38443")] = true
 	}
 	var err error

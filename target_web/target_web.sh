@@ -21,7 +21,7 @@ up 未配置局域网入口时提示输入另一台设备的私有 IPv4，回车
 --lan-ip 仅用于 up，生成 https://<IPv4>:38443/，适合非交互部署。
 也可沿用 TARGET_WEB_LAN_IP_ORIGIN 指定 HTTP(S) 入口；非交互且未配置时跳过。
 --no-build 仅用于 up，直接使用本地已有的两个镜像；完整构建需要本机 Go。
-对外仅开放 HTTPS：38443（映射容器 8443）；后端内部 API：8000。
+对外开放 HTTP：38080（映射 8080）、HTTPS：38443（映射 8443）；后端内部 API：8000。
 EOF
 }
 
@@ -127,7 +127,7 @@ case "$command" in
     [[ -n "$host" ]] || die "无法检测宿主机 IPv4，请使用 --host <本地 IP> 指定"
     # Compose 同步注入前端 IP 样例与后端允许来源，外站域名也交给证书脚本校验。
     export TARGET_WEB_HOST="$host"
-    export TARGET_WEB_EXTERNAL_HOST="${TARGET_WEB_EXTERNAL_HOST:-pz-target-web.com}"
+    export TARGET_WEB_EXTERNAL_HOST="${TARGET_WEB_EXTERNAL_HOST:-www.pz-target-web.com}"
     if [[ "$command" == cert ]]; then
       bash "$ROOT/scripts/generate-cert.sh" "$host" "$ROOT/certs" --force
       printf '执行 ./target_web.sh up --host %s 使服务载入新证书。\n' "$host"
@@ -142,8 +142,8 @@ case "$command" in
     # 重建确保 IP 变化或证书续签后载入新文件，并等待健康检查通过。
     # 移除本 Compose 项目旧版 web 服务，释放端口供独立 frontend 使用。
     compose up -d --no-build --force-recreate --remove-orphans --wait --wait-timeout 60
-    # 只输出已发布的 HTTPS 入口，容器内 HTTP 不作为外部访问地址。
-    printf '\nHTTPS：https://%s:38443\n' "$host"
+    # 与 Compose 映射一致，同时展示两种协议的实际入口。
+    printf '\nHTTP：http://%s:38080\nHTTPS：https://%s:38443\n' "$host" "$host"
     printf '外链测试目录：https://%s:38443/links/\n' "$host"
     printf '外站需在浏览器和扫描器所在主机解析：%s -> %s\n' "$TARGET_WEB_EXTERNAL_HOST" "$host"
     printf '自签名证书会触发浏览器信任提示；可使用以下命令校验：\n'

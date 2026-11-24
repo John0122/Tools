@@ -10,7 +10,8 @@ fi
 host=$1
 cert_dir=$2
 force=${3:-}
-external_host=${TARGET_WEB_EXTERNAL_HOST:-pz-target-web.com}
+# 默认 SAN 与部署入口一致；已有证书不匹配此主机名时会重新生成。
+external_host=${TARGET_WEB_EXTERNAL_HOST:-www.pz-target-web.com}
 
 # DNS 名称也进入 OpenSSL SAN 参数；逐标签验证，拒绝通配符、URL 和注入字符。
 valid_external_host() {

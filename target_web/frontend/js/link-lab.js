@@ -105,17 +105,21 @@
     const note = (value) => { lines.push(value); log.textContent = lines.slice(-15).join("\n"); };
     const refresh = () => {
       const active = socket && socket.readyState < WebSocket.CLOSING;
-      for (const b of buttons) b.disabled = Boolean(active);
+      // HTTPS 页面只允许 WSS，避免浏览器将明文连接判为混合内容。
+      for (const b of buttons) b.disabled = Boolean(active) || (location.protocol === "https:" && b.dataset.wsConnect === "ws");
       send.disabled = !socket || socket.readyState !== WebSocket.OPEN;
       close.disabled = !active;
     };
     refresh();
-    note("通过 HTTPS 入口建立 WSS 连接。");
+    note(location.protocol === "https:" ? "当前为 HTTPS 页面，仅支持 WSS；请从 HTTP 38080 入口测试 WS。" : "可测试 WS 38080 或 WSS 38443 连接。");
     for (const b of buttons) b.addEventListener("click", () => {
       if (socket && socket.readyState < WebSocket.CLOSING) return;
-      // 复用受控外站的 HTTPS 地址与端口，只替换为加密 WebSocket 协议。
+      // 两种 WebSocket 协议分别使用 Compose 已发布的 HTTP 与 HTTPS 端口。
       const url = new URL("/lab/ws", external);
-      url.protocol = "wss:";
+      const secure = b.dataset.wsConnect === "wss";
+      if (!secure && location.protocol === "https:") return;
+      url.protocol = secure ? "wss:" : "ws:";
+      url.port = secure ? "38443" : "38080";
       const current = new WebSocket(url); socket = current; refresh(); note(`正在连接 ${url}`);
       // 每个连接持有自己的计时器，旧连接延迟关闭不能取消新连接的超时。
       const currentTimer = setTimeout(() => { if (current.readyState === WebSocket.CONNECTING) { note("连接超过 8 秒，请检查域名与证书。"); current.close(); } }, 8000);

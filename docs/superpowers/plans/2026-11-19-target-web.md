@@ -4,7 +4,7 @@
 
 **Goal:** 实现 Docker Web 靶机及宿主机 IP HTTPS 证书。
 
-**Architecture:** Nginx 提供 HTTPS 页面并代理 Go API，8080 保留容器内部健康检查；宿主机 Bash 脚本检测地址、生成证书并调用 Compose。
+**Architecture:** Nginx 提供 HTTP/HTTPS 页面并代理 Go API，8080 同时用于容器健康检查；宿主机 Bash 脚本检测地址、生成证书并调用 Compose。
 
 **Tech Stack:** Nginx、Docker Compose v2、Bash、OpenSSL；Python 标准库仅用于测试。
 
@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- 前端仅映射 `38443:8443`，通过 HTTPS 提供外部页面与接口。
+- 前端映射 `38080:8080` 与 `38443:8443`，通过 HTTP/HTTPS 提供外部页面与接口。
 - ECDSA P-256，自签名，825 天，SAN 包含访问 IPv4、localhost、127.0.0.1。
 - 支持 macOS/Linux；证书与私钥不入库。
 
@@ -22,7 +22,7 @@
 - 非法 IPv4：失败且不覆盖已有证书。
 - 重复启动：复用有效证书。
 - 访问 IP 变化或密钥不匹配：重建证书，实际 TLS 握手验证。
-- 仅 HTTPS 端口对外可访问，验证证书信任和地址，不只检查跳过校验的响应。
+- HTTP 和 HTTPS 两个端口对外可访问，验证证书信任和地址，不只检查跳过校验的响应。
 
 ## Task 1：证书与启动脚本
 

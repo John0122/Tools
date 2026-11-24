@@ -20,7 +20,7 @@ CATEGORIES = [
     ("images", "图片外链", "图片地址、响应式图片与多种格式", "P0"),
     ("media", "音视频外链", "音频、视频、播放列表与外部播放器", "P1"),
     ("api", "API 外链", "Fetch、XHR 与实际 GraphQL 查询", "P0"),
-    ("websocket", "WebSocket 外链", "WSS 连接、消息与关闭", "P1"),
+    ("websocket", "WebSocket 外链", "WS / WSS 连接、消息与关闭", "P1"),
     ("iframe", "iframe 外链", "嵌入文档、地图与组件样例", "P0"),
     ("downloads", "文件下载外链", "PDF、DOCX、ZIP、EXE 下载响应", "P1"),
     ("fonts", "字体外链", "WOFF、WOFF2、TTF、OTF 字体加载", "P1"),
@@ -98,11 +98,13 @@ def shared_cases(slug, index):
 def ip_address_content():
     """IP 分类单独使用字面地址；非受控目标不复用域名外站的状态承诺。"""
     slug = "ip-address"
-    # 内站只生成实际发布的 HTTPS 入口，不把未映射的 HTTP 端口标成有效样例。
-    url = f"{INTERNAL_IP}/fixtures/landing.html?case=ip-address-https"
-    cid = record(slug, "https", "a[href] · IPv4", url, scope="internal", trigger="click", ip_group="internal")
-    internal_sample = f'<p>{link(url, "通过 HTTPS 访问内站", cid)}</p><p><code>{esc(url)}</code></p>'
-    body = section("internal", "内站 IP 链接", "a[href] · IPv4 · HTTPS", internal_sample,
+    # 两个内站入口分别对应已发布的 HTTP 与 HTTPS 端口。
+    internal_sample = ""
+    for scheme, port in (("http", "38080"), ("https", "38443")):
+        url = f"{scheme}://__LAB_INTERNAL_HOST__:{port}/fixtures/landing.html?case=ip-address-{scheme}"
+        cid = record(slug, scheme, "a[href] · IPv4", url, scope="internal", trigger="click", ip_group="internal")
+        internal_sample += f'<p>{link(url, f"通过 {scheme.upper()} 访问内站", cid)}</p><p><code>{esc(url)}</code></p>'
+    body = section("internal", "内站 IP 链接", "a[href] · IPv4 · HTTP / HTTPS", internal_sample,
                    "当前站点的 IP 优先归为内站，即使它本身使用局域网私有地址。HTTPS 使用本站证书。")
     cid = record(slug, "public", "a[href] · IPv4", PUBLIC_IP_URL, status=None,
                  trigger="click", ip_group="public")
@@ -205,9 +207,10 @@ def category_content(slug):
         body+=request_demo(slug,"graphql","GraphQL 查询与变量","POST · application/json · GraphQL",f"{EXT}/lab/graphql","fetch","POST",json.dumps({"query":"query($id:ID!){service article(id:$id){id title summary}}","variables":{"id":"intro"}}))
         body+=request_demo(slug,"missing-api","失效接口","fetch() · HTTP 410",f"{EXT}/lab/status/410?case=api-missing-api",status=410)
     elif slug=="websocket":
-        # WSS 与 HTTPS 共用唯一对外入口，清单不再记录未发布的 WS 地址。
+        # WS 与 WSS 分别复用 HTTP / HTTPS 入口，HTTPS 页只启用加密连接按钮。
+        record(slug,"ws","new WebSocket()","ws://__LAB_EXTERNAL_HOST__:38080/lab/ws",101,trigger="click")
         record(slug,"wss","new WebSocket()",f"wss://__LAB_EXTERNAL_HOST__:38443/lab/ws",101,trigger="click")
-        body+=section("socket","建立连接并发送消息","new WebSocket() · send() · close()",'''<div data-websocket><div class="lab-actions"><button class="lab-button" type="button" data-ws-connect="wss" disabled>连接 WSS</button><button class="lab-button" type="button" data-ws-close disabled>关闭连接</button></div><label for="ws-message">演示消息</label><input id="ws-message" value="你好，外链测试站" maxlength="1000"><button class="lab-button" type="button" data-ws-send disabled>发送消息</button><pre class="lab-result" data-ws-log role="status" aria-live="polite">尚未连接。</pre></div>''',"服务器回显实际消息，支持心跳，单次连接最多 2 分钟。WSS 通过 HTTPS 38443 入口连接。", "P1")
+        body+=section("socket","建立连接并发送消息","new WebSocket() · send() · close()",'''<div data-websocket><div class="lab-actions"><button class="lab-button" type="button" data-ws-connect="ws" disabled>连接 WS</button><button class="lab-button" type="button" data-ws-connect="wss" disabled>连接 WSS</button><button class="lab-button" type="button" data-ws-close disabled>关闭连接</button></div><label for="ws-message">演示消息</label><input id="ws-message" value="你好，外链测试站" maxlength="1000"><button class="lab-button" type="button" data-ws-send disabled>发送消息</button><pre class="lab-result" data-ws-log role="status" aria-live="polite">尚未连接。</pre></div>''',"服务器回显实际消息，支持心跳，单次连接最多 2 分钟。HTTP 页面可测试 WS 38080 与 WSS 38443；HTTPS 页面只启用 WSS。", "P1")
     elif slug=="iframe":
         for key,title in [("embedded","外站文档"),("map","地图示意组件"),("widget","服务状态组件")]:
             url=f"{EXT}/fixtures/{key}.html";cid=record(slug,key,"iframe[src]",url)
@@ -261,8 +264,8 @@ def shell(title, intro, body, slug="", head=""):
     nav=''.join(f'<li><a href="/links/{s}/"{chr(32)+"aria-current=page" if s==slug else ""}>{t}</a></li>' for s,t,_,_ in CATEGORIES)
     crumbs='<a href="/">首页</a><span aria-hidden="true">/</span>'+(f'<a href="/links/">外链检测</a><span aria-hidden="true">/</span><span aria-current="page">{title}</span>' if slug else '<span aria-current="page">外链检测</span>')
     resource_note='<p class="lab-note">资源链接在新标签页打开；文件链接按浏览器设置下载。</p>' if slug else ""
-    # IP 分类不把复用同一主机的受控域名站点标成公网外站。
-    origin_note=f'<p class="lab-origin">受控外站 <code>{EXT}</code><span>主站与外站通过独立主机名区分。</span></p>'
+    # 域名也提供完整首页；提示链接归属以访问入口为准，清单以 IP 入口作对照。
+    origin_note=f'<p class="lab-origin">样例域名 <code>{EXT}</code><span>通过 IP 入口测试时，该域名用于站外对照；同域访问时属于站内。</span></p>'
     external_meta=f'<meta name="lab-external-base" content="{EXT}">'
     shared_script='<script src="/js/link-lab.js" defer></script>'
     if slug=="ip-address":

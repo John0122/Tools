@@ -18,7 +18,8 @@
           <p class="intro">选择一个接口，发送请求，查看真实响应。</p>
         </div>
         <nav class="protocols" aria-label="访问协议">
-          <!-- Compose 仅发布 HTTPS，页面不再提供未映射的 HTTP 入口。 -->
+          <!-- 两种协议使用相同主机名，分别对应 Compose 对外发布的端口。 -->
+          <a id="http-link" href="http://localhost:38080/">HTTP <code>:38080</code></a>
           <a id="https-link" href="https://localhost:38443/">HTTPS <code>:38443</code></a>
         </nav>
       </header>

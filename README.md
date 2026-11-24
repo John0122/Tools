@@ -26,16 +26,19 @@ cd target_web
 
 | 入口 | 地址或端口 | 说明 |
 | --- | --- | --- |
+| HTTP | <http://127.0.0.1:38080> | 明文访问，支持 WS 样例 |
 | HTTPS | <https://127.0.0.1:38443> | 使用本机 IP 自签名证书，也可通过启动脚本输出的局域网地址访问 |
 | 后端 | `8000` | 仅供 Docker 内部网络访问，由前端 Nginx 代理 |
 
-前端仅发布 `38443:8443`；容器内 HTTP 8080 用于健康检查，不映射到宿主机。
+前端发布 `38080:8080` 与 `38443:8443`，同时提供 HTTP 和 HTTPS。
+
+配置域名解析后，`https://www.pz-target-web.com:38443/` 与 IP 入口均可直接打开完整靶机首页，并使用分类页和 API。
 
 自签名证书默认不受浏览器信任，证书配置与校验方式见 [HTTPS 证书说明](target_web/README.md#https-证书)。
 
 页面支持 GET、HEAD、POST、PUT、PATCH、DELETE、OPTIONS、TRACE、CONNECT 九种方法，展示真实响应的状态码、耗时、响应头和正文。其中 TRACE、CONNECT 由后端向固定接口代发；CONNECT 返回 501 和方法说明，不建立隧道。
 
-首页“外链检测”进入 `/links/` 二级目录，再访问 13 个分类页。分类页包含真实 HTML 标签、动态请求、GraphQL、WebSocket、表单与重定向，以及站内/站外隐藏链接和失效链接。“IP 地址链接”按内站、公网外站、局域网其他设备分组，地址配置见 [IP 地址链接配置](target_web/README.md#ip-地址链接配置)。其他分类的受控外站默认 `pz-target-web.com`，需要在访问设备的 DNS 或 hosts 中指向部署 IP，详见 [外链检测页面](target_web/README.md#外链检测页面)。
+首页“外链检测”进入 `/links/` 二级目录，再访问 13 个分类页。分类页包含真实 HTML 标签、动态请求、GraphQL、WebSocket、表单与重定向，以及站内/站外隐藏链接和失效链接。“IP 地址链接”按内站、公网外站、局域网其他设备分组，地址配置见 [IP 地址链接配置](target_web/README.md#ip-地址链接配置)。其他分类的受控外站默认 `www.pz-target-web.com`，需要在访问设备的 DNS 或 hosts 中指向部署 IP，详见 [外链检测页面](target_web/README.md#外链检测页面)。
 
 在 `target_web/` 目录中管理服务：
 

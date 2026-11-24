@@ -5,7 +5,8 @@ services:
     image: target-web-frontend:${TARGET_WEB_IMAGE_TAG:-local}
     pull_policy: never
     environment:
-      TARGET_WEB_EXTERNAL_HOST: ${TARGET_WEB_EXTERNAL_HOST:-pz-target-web.com}
+      # 前后端与证书使用同一默认主机名，保持资源地址与允许来源一致。
+      TARGET_WEB_EXTERNAL_HOST: ${TARGET_WEB_EXTERNAL_HOST:-www.pz-target-web.com}
       # 公网链接固定在页面中；局域网入口由部署提示或显式配置传入。
       TARGET_WEB_HOST: ${TARGET_WEB_HOST:-127.0.0.1}
       TARGET_WEB_LAN_IP_ORIGIN: ${TARGET_WEB_LAN_IP_ORIGIN:-}
@@ -14,7 +15,8 @@ services:
       backend:
         condition: service_healthy
     ports:
-      # 仅发布 HTTPS；容器内 8080 继续用于健康检查。
+      # 同时提供 HTTP 与 HTTPS 入口，后端保持仅容器网络可达。
+      - "38080:8080"
       - "38443:8443"
     volumes:
       # 目录只读挂载；使用启动脚本先生成证书，避免挂载空目录后反复重启。
@@ -40,7 +42,7 @@ services:
     image: target-web-backend:${TARGET_WEB_IMAGE_TAG:-local}
     pull_policy: never
     environment:
-      TARGET_WEB_EXTERNAL_HOST: ${TARGET_WEB_EXTERNAL_HOST:-pz-target-web.com}
+      TARGET_WEB_EXTERNAL_HOST: ${TARGET_WEB_EXTERNAL_HOST:-www.pz-target-web.com}
       TARGET_WEB_HOST: ${TARGET_WEB_HOST:-127.0.0.1}
     restart: unless-stopped
     # 仅供 Compose 网络中的前端访问，不发布宿主机端口。

@@ -1,7 +1,8 @@
 #!/bin/sh
 # 启动时生成站点配置；支持复用镜像在不同测试域名和 IP 下部署。
 set -eu
-external=${TARGET_WEB_EXTERNAL_HOST:-pz-target-web.com}
+# 独立启动容器时仍沿用 Compose 与证书生成器的默认主机名。
+external=${TARGET_WEB_EXTERNAL_HOST:-www.pz-target-web.com}
 main_ip=${TARGET_WEB_HOST:-127.0.0.1}
 lan_origin=${TARGET_WEB_LAN_IP_ORIGIN:-}
 printf '%s\n' "$external" | awk '

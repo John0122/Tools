@@ -14,7 +14,8 @@ import (
 
 // 以查询结果而非固定成功文案验证 GraphQL，未知字段必须失败。
 func TestGraphQLQueries(t *testing.T) {
-	h, _ := NewHandler(Config{ExternalHost: "pz-target-web.com"})
+	// 协议样例使用与前端虚拟主机一致的域名。
+	h, _ := NewHandler(Config{ExternalHost: "www.pz-target-web.com"})
 	defer h.Close()
 	for _, tc := range []struct {
 		query  string
@@ -37,7 +38,7 @@ func TestGraphQLQueries(t *testing.T) {
 }
 
 func TestWebSocketEchoOriginAndShutdown(t *testing.T) {
-	h, _ := NewHandler(Config{ExternalHost: "pz-target-web.com"})
+	h, _ := NewHandler(Config{ExternalHost: "www.pz-target-web.com"})
 	defer h.Close()
 	s := httptest.NewServer(h)
 	defer s.Close()

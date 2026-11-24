@@ -1,15 +1,17 @@
 "use strict";
 
-// 沿用访问主机名，仅指向 Compose 对外发布的 HTTPS 入口。
-const httpsURL = new URL(window.location.href);
-httpsURL.protocol = "https:";
-httpsURL.port = "38443";
-httpsURL.pathname = "/";
-httpsURL.search = "";
-httpsURL.hash = "";
-const httpsLink = document.getElementById("https-link");
-httpsLink.href = httpsURL.href;
-if (window.location.protocol === "https:") httpsLink.setAttribute("aria-current", "page");
+// 沿用当前 IP 或域名，在两个已发布端口之间切换首页入口。
+for (const [scheme, port] of [["http", "38080"], ["https", "38443"]]) {
+  const url = new URL(window.location.href);
+  url.protocol = `${scheme}:`;
+  url.port = port;
+  url.pathname = "/";
+  url.search = "";
+  url.hash = "";
+  const link = document.getElementById(`${scheme}-link`);
+  link.href = url.href;
+  if (window.location.protocol === `${scheme}:`) link.setAttribute("aria-current", "page");
+}
 document.getElementById("current-url").textContent = window.location.origin;
 
 const list = document.getElementById("api-list");
