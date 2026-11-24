@@ -6,6 +6,7 @@
 
 - `/links/` 为二级目录；三级路径为 `/links/{navigation,javascript,css,images,media,api,websocket,iframe,downloads,fonts,forms,redirects,ip-address}/`。
 - 复用原有蓝灰主题、系统字体、深色模式与键盘焦点。目录使用列表，测试页使用章节、样例编号、技术标签和实际演示区域。
+- 所有 HTML 页面使用与首页一致的内嵌 SVG 标签页图标（Tabler `brand-feedly`，`#0d8e91`）；生成器的目录、分类与辅助页面模板统一输出 `link[rel=icon]` 的 `data:` URL，不新增网络资源请求。
 - 动态链接、社交元数据、canonical 归入导航或 JavaScript 页；资源提示归入对应资源页；不另增分类页。
 - 前 12 类包含有效站内/站外对照，以及站内暗链、站外暗链、站内 404、站外 410。IP 分类使用独立的内站暗链和 404/410，不混入域名外站。暗链真实存在于 DOM，通过透明、屏外、隐藏容器等方式隐藏；不把不可见的 script/link 标签自动称为暗链。
 - 固定样例编号和机器可读清单记录预期结果；隐藏目标不在页面其他可见链接中重复出现，避免扫描器仅靠显链发现它。清单属于明确的测试对照数据。

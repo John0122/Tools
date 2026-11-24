@@ -14,6 +14,8 @@ Target Web 是局域网 HTTP 方法与外链检测靶机。主要操作是选取
 
 运行时 token 唯一来源为 `frontend/css/style.css` 的 `:root`；此文件记录设计意图。新增界面必须复用这些 CSS 变量，不添加平行主题配置。
 
+所有 HTML 页面的标签页图标统一为用户指定的 Tabler `brand-feedly` SVG，24×24、描边色 `#0d8e91`，通过 `link[rel=icon]` 的 `data:image/svg+xml` URL 内嵌。首页直接声明；目录、分类、落地、嵌入、暗链目标和跳转页由 `scripts/generate-link-pages.py` 的公共模板声明，不增加图标资源请求。
+
 | Token | Light | Dark | 用途 |
 | --- | --- | --- | --- |
 | `--page` | #f1f5f8 | #10222d | 页面背景 |

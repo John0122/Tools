@@ -4,6 +4,8 @@
 
 打开页面即可点击接口列表，真实发送请求，查看状态码、耗时、响应头和正文。
 
+首页、外链目录、分类页及辅助 HTML 页面统一使用内嵌 SVG 标签页图标（Tabler `brand-feedly`，描边色 `#0d8e91`）；图标通过 `data:` URL 提供，不产生额外网络请求。生成页面由 `scripts/generate-link-pages.py` 同步维护。
+
 ## 部署结构
 
 ```text

@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1] / "frontend"
+# 所有生成页面沿用首页的内嵌图标，避免新增图标请求干扰外链检测样例。
+FAVICON = '<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%2224%22%20height=%2224%22%20viewBox=%220%200%2024%2024%22%20fill=%22none%22%20stroke=%22%230d8e91%22%20stroke-width=%222%22%20stroke-linecap=%22round%22%20stroke-linejoin=%22round%22%20class=%22icon%20icon-tabler%20icons-tabler-outline%20icon-tabler-brand-feedly%22%3E%3Cpath%20stroke=%22none%22%20d=%22M0%200h24v24H0z%22%20fill=%22none%22%20/%3E%3Cpath%20d=%22M7.833%2012.278l4.445%20-4.445%22%20/%3E%3Cpath%20d=%22M10.055%2014.5l2.223%20-2.222%22%20/%3E%3Cpath%20d=%22M12.278%2016.722l.555%20-.555%22%20/%3E%3Cpath%20d=%22M19.828%2014.828a4%204%200%200%200%200%20-5.656l-5%20-5a4%204%200%200%200%20-5.656%200l-5%205a4%204%200%200%200%200%205.656l6.171%206.172h3.314l6.171%20-6.172%22%20/%3E%3C/svg%3E">'
 EXT = "https://__LAB_EXTERNAL_HOST__:38443"
 # 部署时注入本站 IP，使原始 HTML 能直接被静态扫描器提取。
 INTERNAL_IP = "https://__LAB_INTERNAL_HOST__:38443"
@@ -69,7 +71,7 @@ def request_demo(category, key, title, feature, url, kind="fetch", method="GET",
 
 
 def fixture_page(title, body, head=""):
-    return f'''<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{title}</title>{head}<style>body{{font:16px/1.7 system-ui;margin:32px;max-width:760px;color:#183044;background:#f1f5f8}}h1{{font-size:28px}}code{{overflow-wrap:anywhere}}</style></head><body><h1>{title}</h1>{body}</body></html>'''
+    return f'''<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{title}</title>{FAVICON}{head}<style>body{{font:16px/1.7 system-ui;margin:32px;max-width:760px;color:#183044;background:#f1f5f8}}h1{{font-size:28px}}code{{overflow-wrap:anywhere}}</style></head><body><h1>{title}</h1>{body}</body></html>'''
 
 
 def shared_cases(slug, index):
@@ -265,7 +267,7 @@ def shell(title, intro, body, slug="", head=""):
         external_meta=shared_script=""
     return f'''<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{title} · Target Web</title>
-{external_meta}<link rel="stylesheet" href="/css/style.css"><link rel="stylesheet" href="/css/link-lab.css">{head}{shared_script}</head>
+{FAVICON}{external_meta}<link rel="stylesheet" href="/css/style.css"><link rel="stylesheet" href="/css/link-lab.css">{head}{shared_script}</head>
 <body class="link-lab"><a class="skip-link" href="#lab-content">跳到测试内容</a><main>
 <nav class="lab-breadcrumb" aria-label="面包屑">{crumbs}</nav>
 <header class="lab-header"><div class="label">TARGET WEB / 外链检测</div><h1>{title}</h1><p class="intro">{intro}</p>{resource_note}</header>
