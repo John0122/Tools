@@ -8,7 +8,7 @@ die() { printf '错误：%s\n' "$*" >&2; exit 1; }
 
 usage() {
   cat <<'EOF'
-用法：./target_web.sh [up|down|status|logs|cert] [--host <宿主机 IPv4>] [--no-build]
+用法：./target_web.sh [up|down|status|logs|cert] [--host <宿主机 IPv4>] [--lan-ip <另一台设备 IPv4>] [--no-build]
 
   up      生成或复用证书，构建并启动容器（默认命令）
   down    停止并移除容器，保留证书
@@ -17,6 +17,9 @@ usage() {
   cert    重新生成证书；随后执行 up 使运行中的服务载入新证书
 
 up/cert 默认检测宿主机默认路由的 IPv4；多网卡时可用 --host 指定。
+up 未配置局域网入口时提示输入另一台设备的私有 IPv4，回车可跳过。
+--lan-ip 仅用于 up，生成 https://<IPv4>:38443/，适合非交互部署。
+也可沿用 TARGET_WEB_LAN_IP_ORIGIN 指定 HTTP(S) 入口；非交互且未配置时跳过。
 --no-build 仅用于 up，直接使用本地已有的两个镜像；完整构建需要本机 Go。
 HTTP：38080；HTTPS：38443；后端内部 API：8000。
 EOF
@@ -45,8 +48,42 @@ compose() {
   docker compose --project-directory "$ROOT" -f "$ROOT/compose.yaml" "$@"
 }
 
+# 宿主机和容器复用入口校验器，在生成证书和构建镜像之前反馈配置错误。
+validate_origin() {
+  printf '%s\n' "$1" | awk -v group="$2" -v main_ip="$host" \
+    -f "$ROOT/frontend/docker-entrypoint.d/ip-origin.awk"
+}
+
+configure_lan_origin() {
+  local input_ip origin="${TARGET_WEB_LAN_IP_ORIGIN:-}"
+  if [[ -n "$lan_ip" ]]; then
+    # 参数优先于环境配置，只接收裸 IP，统一使用另一套服务的 HTTPS 端口。
+    origin="https://$lan_ip:38443"
+  elif [[ -z "$origin" && -t 0 ]]; then
+    while :; do
+      printf '请输入另一套 target_web 的局域网 IPv4（例如 192.168.5.20，回车跳过）：'
+      IFS= read -r input_ip || die "未读取到局域网 IP，部署已取消"
+      [[ -n "$input_ip" ]] || break
+      if validate_origin "https://$input_ip:38443" lan; then
+        origin="https://$input_ip:38443"
+        break
+      fi
+      printf '地址无效：请输入与本站 %s 不同的私有 IPv4，不带协议、端口或路径。\n' "$host" >&2
+    done
+  fi
+  if [[ -n "$origin" ]]; then
+    validate_origin "$origin" lan || die "局域网入口须使用另一台设备的私有 IPv4；--lan-ip 不带协议、端口或路径"
+    printf '局域网测试链接：%s/\n' "${origin%/}"
+  else
+    printf '未配置局域网设备，页面将显示未配置说明；可用 --lan-ip 指定。\n'
+  fi
+  # 不写入持久文件；每次部署由提示或显式配置决定目标设备。
+  export TARGET_WEB_LAN_IP_ORIGIN="$origin"
+}
+
 command=up
 host=""
+lan_ip=""
 no_build=false
 if [[ $# -gt 0 && "$1" != -* ]]; then
   command=$1
@@ -57,6 +94,11 @@ while [[ $# -gt 0 ]]; do
     --host)
       [[ $# -ge 2 && -n "$2" ]] || die "--host 后需要提供 IPv4 地址"
       host=$2
+      shift 2
+      ;;
+    --lan-ip)
+      [[ $# -ge 2 && -n "$2" ]] || die "--lan-ip 后需要提供另一台设备的私有 IPv4 地址"
+      lan_ip=$2
       shift 2
       ;;
     --no-build) no_build=true; shift ;;
@@ -71,6 +113,7 @@ case "$command" in
 esac
 
 [[ "$no_build" == false || "$command" == up ]] || die "--no-build 仅用于 up"
+[[ -z "$lan_ip" || "$command" == up ]] || die "--lan-ip 仅用于 up"
 
 if [[ "$command" != cert ]]; then
   command -v docker >/dev/null 2>&1 || die "请先安装 Docker 和 Docker Compose v2"
@@ -90,6 +133,8 @@ case "$command" in
       printf '执行 ./target_web.sh up --host %s 使服务载入新证书。\n' "$host"
       exit 0
     fi
+    validate_origin "http://$host" internal || die "本站地址须为不带端口或路径的 IPv4"
+    configure_lan_origin
     bash "$ROOT/scripts/generate-cert.sh" "$host" "$ROOT/certs"
     if [[ "$no_build" == false ]]; then
       bash "$ROOT/build.sh"

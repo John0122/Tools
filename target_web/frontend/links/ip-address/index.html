@@ -11,11 +11,11 @@
       <p class="lab-feature"><code>a[href] · IPv4 · HTTP / HTTPS</code></p>
       <div class="lab-demo"><ul><li><a href="http://__LAB_INTERNAL_HOST__:38080/fixtures/landing.html?case=ip-address-http" target="_blank" rel="noopener" data-case-id="ip-address-http">通过 HTTP 访问内站</a><p><code>http://__LAB_INTERNAL_HOST__:38080/fixtures/landing.html?case=ip-address-http</code></p></li><li><a href="https://__LAB_INTERNAL_HOST__:38443/fixtures/landing.html?case=ip-address-https" target="_blank" rel="noopener" data-case-id="ip-address-https">通过 HTTPS 访问内站</a><p><code>https://__LAB_INTERNAL_HOST__:38443/fixtures/landing.html?case=ip-address-https</code></p></li></ul></div><p class="lab-note">当前站点的 IP 优先归为内站，即使它本身使用局域网私有地址。HTTPS 使用本站证书。</p></section><section class="lab-section" id="public">
       <div class="lab-section-heading"><h2>外站 IP 链接（公网）</h2><span class="lab-priority">P0</span></div>
-      <p class="lab-feature"><code>a[href] · IPv4</code></p>
-      <div class="lab-demo">__LAB_PUBLIC_IP_SAMPLE__</div><p class="lab-note">目标为其他站点的公网 IPv4；可达性、证书和响应状态取决于配置的目标服务。</p></section><section class="lab-section" id="lan">
+      <p class="lab-feature"><code>a[href] · IPv4 · HTTPS</code></p>
+      <div class="lab-demo"><p><a href="https://1.1.1.1/cdn-cgi/trace" target="_blank" rel="noopener" data-case-id="ip-address-public">访问公网 IP 诊断页面</a></p><p>目标地址 <code>https://1.1.1.1/cdn-cgi/trace</code></p></div><p class="lab-note">通过公网 IPv4 访问 Cloudflare 诊断文本；实际可达性与响应状态取决于网络和目标服务。</p></section><section class="lab-section" id="lan">
       <div class="lab-section-heading"><h2>局域网 IP 链接</h2><span class="lab-priority">P0</span></div>
       <p class="lab-feature"><code>a[href] · IPv4</code></p>
-      <div class="lab-demo">__LAB_LAN_IP_SAMPLE__</div><p class="lab-note">目标为其他设备的私有 IPv4，覆盖 10/8、172.16/12、192.168/16 网段；实际访问需具备对应网络连通性。</p></section><section class="lab-section" id="visibility">
+      <div class="lab-demo">__LAB_LAN_IP_SAMPLE__</div><p class="lab-note">部署时输入另一套服务的私有 IPv4，默认访问 HTTPS 38443；支持 10/8、172.16/12、192.168/16 网段。</p></section><section class="lab-section" id="visibility">
       <div class="lab-section-heading"><h2>内站 IP 暗链</h2><span class="lab-priority">P1</span></div>
       <p class="lab-feature"><code>a[href] · IPv4 · display: none</code></p>
       <div class="lab-demo"><div class="lab-hidden-display" aria-hidden="true"><a href="https://__LAB_INTERNAL_HOST__:38443/fixtures/hidden/ip-address-internal.html" target="_blank" rel="noopener" data-case-id="ip-address-hidden-internal" tabindex="-1">内站 IP 补充资料</a></div><p>本区包含真实隐藏链接 <code>ip-address-hidden-internal</code>，可通过 DOM 与计算样式检查。</p></div><p class="lab-note">隐藏链接退出键盘焦点序列，目标地址仍保留在原始 HTML 中。</p></section><section class="lab-section" id="dead-links">

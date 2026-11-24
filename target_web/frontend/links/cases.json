@@ -1744,7 +1744,7 @@
       "category": "ip-address",
       "page": "/links/ip-address/",
       "feature": "a[href] · IPv4",
-      "target": "__LAB_PUBLIC_IP_URL__",
+      "target": "https://1.1.1.1/cdn-cgi/trace",
       "expected_status": null,
       "scope": "external",
       "visibility": "visible",

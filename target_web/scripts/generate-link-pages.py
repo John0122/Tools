@@ -9,6 +9,8 @@ ROOT = Path(__file__).resolve().parents[1] / "frontend"
 # 所有生成页面沿用首页的内嵌图标，避免新增图标请求干扰外链检测样例。
 FAVICON = '<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%2224%22%20height=%2224%22%20viewBox=%220%200%2024%2024%22%20fill=%22none%22%20stroke=%22%230d8e91%22%20stroke-width=%222%22%20stroke-linecap=%22round%22%20stroke-linejoin=%22round%22%20class=%22icon%20icon-tabler%20icons-tabler-outline%20icon-tabler-brand-feedly%22%3E%3Cpath%20stroke=%22none%22%20d=%22M0%200h24v24H0z%22%20fill=%22none%22%20/%3E%3Cpath%20d=%22M7.833%2012.278l4.445%20-4.445%22%20/%3E%3Cpath%20d=%22M10.055%2014.5l2.223%20-2.222%22%20/%3E%3Cpath%20d=%22M12.278%2016.722l.555%20-.555%22%20/%3E%3Cpath%20d=%22M19.828%2014.828a4%204%200%200%200%200%20-5.656l-5%20-5a4%204%200%200%200%20-5.656%200l-5%205a4%204%200%200%200%200%205.656l6.171%206.172h3.314l6.171%20-6.172%22%20/%3E%3C/svg%3E">'
 EXT = "https://__LAB_EXTERNAL_HOST__:38443"
+# 公网样例使用用户指定的完整路径，不经过只支持根地址的部署入口替换。
+PUBLIC_IP_URL = "https://1.1.1.1/cdn-cgi/trace"
 # 部署时注入本站 IP，使原始 HTML 能直接被静态扫描器提取。
 INTERNAL_IP = "https://__LAB_INTERNAL_HOST__:38443"
 CATEGORIES = [
@@ -103,14 +105,16 @@ def ip_address_content():
         links.append(f'<li>{link(url, f"通过 {scheme.upper()} 访问内站", cid)}<p><code>{esc(url)}</code></p></li>')
     body = section("internal", "内站 IP 链接", "a[href] · IPv4 · HTTP / HTTPS", '<ul>'+''.join(links)+'</ul>',
                    "当前站点的 IP 优先归为内站，即使它本身使用局域网私有地址。HTTPS 使用本站证书。")
-    for group, title, token, note in (
-        ("public", "外站 IP 链接（公网）", "PUBLIC", "目标为其他站点的公网 IPv4；可达性、证书和响应状态取决于配置的目标服务。"),
-        ("lan", "局域网 IP 链接", "LAN", "目标为其他设备的私有 IPv4，覆盖 10/8、172.16/12、192.168/16 网段；实际访问需具备对应网络连通性。"),
-    ):
-        # 未配置时，启动脚本把清单中的目标替换为 null，把样例替换为说明文字。
-        record(slug, group, "a[href] · IPv4", f"__LAB_{token}_IP_URL__", status=None,
-               trigger="click", ip_group=group)
-        body += section(group, title, "a[href] · IPv4", f"__LAB_{token}_IP_SAMPLE__", note)
+    cid = record(slug, "public", "a[href] · IPv4", PUBLIC_IP_URL, status=None,
+                 trigger="click", ip_group="public")
+    public_sample = f'<p>{link(PUBLIC_IP_URL, "访问公网 IP 诊断页面", cid)}</p><p>目标地址 <code>{PUBLIC_IP_URL}</code></p>'
+    body += section("public", "外站 IP 链接（公网）", "a[href] · IPv4 · HTTPS", public_sample,
+                    "通过公网 IPv4 访问 Cloudflare 诊断文本；实际可达性与响应状态取决于网络和目标服务。")
+    # 只有局域网目标需要在部署时输入；未配置时替换为说明文字和 null。
+    record(slug, "lan", "a[href] · IPv4", "__LAB_LAN_IP_URL__", status=None,
+           trigger="click", ip_group="lan")
+    body += section("lan", "局域网 IP 链接", "a[href] · IPv4", "__LAB_LAN_IP_SAMPLE__",
+                    "部署时输入另一套服务的私有 IPv4，默认访问 HTTPS 38443；支持 10/8、172.16/12、192.168/16 网段。")
 
     hidden_path = "fixtures/hidden/ip-address-internal.html"
     write(hidden_path, fixture_page("内站 IP 隐藏链接目标", "<p>样例编号：ip-address-hidden-internal。该目标真实存在，预期 HTTP 200。</p>"))

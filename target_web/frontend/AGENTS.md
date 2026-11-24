@@ -7,7 +7,7 @@
 - `../build.sh` 整理 `html/` 和 `nginx/` 临时产物上下文，再独立构建 Nginx 镜像；Dockerfile 只复制运行文件，不运行编译命令。Nginx 配置在 `nginx/`，不得复制进静态公开目录。
 - Nginx 将 API 代理到 `backend:8000`，通过 Docker DNS 解析跟踪后端地址变化。
 - 受控外站复用当前 Nginx 容器，通过 `TARGET_WEB_EXTERNAL_HOST` 与主站区分。启动脚本替换静态产物与虚拟主机模板中的占位符；源码保留占位符，不硬编码部署 IP。
-- IP 分类使用 `TARGET_WEB_HOST` 与可选 `TARGET_WEB_PUBLIC_IP_ORIGIN`、`TARGET_WEB_LAN_IP_ORIGIN`，入口校验器与启动脚本一并打包。内站优先匹配本站 IP，公网和局域网其他设备单独分组；空配置不得生成可点击的空链接或伪造响应状态。
+- IP 分类使用 `TARGET_WEB_HOST` 与可选 `TARGET_WEB_LAN_IP_ORIGIN`，公网链接固定为 `https://1.1.1.1/cdn-cgi/trace`。部署脚本提示输入另一台设备的私有 IPv4，或使用 `--lan-ip`，默认生成 HTTPS 38443 入口；入口校验器与启动脚本一并打包。局域网目标不能重复本站 IP；空配置不得生成可点击的空链接或伪造响应状态。
 - 对外 HTTP 38080、HTTPS 38443；本机 IP 证书由宿主机生成并只读挂载，证书与私钥不进入镜像。
 
 ## 中文
