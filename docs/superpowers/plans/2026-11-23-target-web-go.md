@@ -4,7 +4,7 @@
 
 **Goal:** 拆分原生前端与 Go 后端，实现全部九种标准 HTTP 方法的描述接口。
 
-**Architecture:** Go 同时服务静态资源及 API，HTTP/HTTPS 共用处理器；保留 Docker、端口和宿主机证书脚本。
+**Architecture:** Nginx 提供 HTTPS 页面并代理 Go API；前后端独立镜像，证书在宿主机生成后只读挂载到前端。
 
 **Tech Stack:** HTML、CSS、JavaScript、Go 标准库、Docker Compose、OpenSSL。
 
@@ -13,12 +13,12 @@
 ## Global Constraints
 
 - 原生前端位于 `frontend/`，Go 后端位于 `backend/`。
-- 宿主机 HTTP 38080、HTTPS 38443；沿用本机 IP 自签名证书。
+- 前端仅发布 `38443:8443`；沿用本机 IP 自签名证书，8080 保留容器内部健康检查。
 - API 只返回描述，不执行数据写入或代理转发；HEAD 无正文，CONNECT 501 描述占位。
 
 ## Review Focus
 
-- 所有方法可以通过两个公开端口到达接口。
+- 所有方法通过 HTTPS 入口访问；TRACE/CONNECT 由受限代发接口提供。
 - HEAD、OPTIONS、CONNECT 的响应符合文档约定。
 - 错误方法和未知路径不会落入首页。
 - CSS/JS 从新目录正确发布，源代码与证书不能作为静态文件访问。

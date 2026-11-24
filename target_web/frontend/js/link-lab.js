@@ -105,16 +105,17 @@
     const note = (value) => { lines.push(value); log.textContent = lines.slice(-15).join("\n"); };
     const refresh = () => {
       const active = socket && socket.readyState < WebSocket.CLOSING;
-      for (const b of buttons) b.disabled = Boolean(active) || (b.dataset.wsConnect === "ws" && location.protocol === "https:");
+      for (const b of buttons) b.disabled = Boolean(active);
       send.disabled = !socket || socket.readyState !== WebSocket.OPEN;
       close.disabled = !active;
     };
     refresh();
-    if (location.protocol === "https:") note("当前为 HTTPS 页面，请使用 WSS；WS 可从 HTTP 入口测试。");
+    note("通过 HTTPS 入口建立 WSS 连接。");
     for (const b of buttons) b.addEventListener("click", () => {
       if (socket && socket.readyState < WebSocket.CLOSING) return;
-      const protocol = b.dataset.wsConnect;
-      const url = `${protocol}://${external.hostname}:${protocol === "wss" ? 38443 : 38080}/lab/ws`;
+      // 复用受控外站的 HTTPS 地址与端口，只替换为加密 WebSocket 协议。
+      const url = new URL("/lab/ws", external);
+      url.protocol = "wss:";
       const current = new WebSocket(url); socket = current; refresh(); note(`正在连接 ${url}`);
       // 每个连接持有自己的计时器，旧连接延迟关闭不能取消新连接的超时。
       const currentTimer = setTimeout(() => { if (current.readyState === WebSocket.CONNECTING) { note("连接超过 8 秒，请检查域名与证书。"); current.close(); } }, 8000);

@@ -21,7 +21,7 @@ up 未配置局域网入口时提示输入另一台设备的私有 IPv4，回车
 --lan-ip 仅用于 up，生成 https://<IPv4>:38443/，适合非交互部署。
 也可沿用 TARGET_WEB_LAN_IP_ORIGIN 指定 HTTP(S) 入口；非交互且未配置时跳过。
 --no-build 仅用于 up，直接使用本地已有的两个镜像；完整构建需要本机 Go。
-HTTP：38080；HTTPS：38443；后端内部 API：8000。
+对外仅开放 HTTPS：38443（映射容器 8443）；后端内部 API：8000。
 EOF
 }
 
@@ -142,8 +142,9 @@ case "$command" in
     # 重建确保 IP 变化或证书续签后载入新文件，并等待健康检查通过。
     # 移除本 Compose 项目旧版 web 服务，释放端口供独立 frontend 使用。
     compose up -d --no-build --force-recreate --remove-orphans --wait --wait-timeout 60
-    printf '\nHTTP： http://%s:38080\nHTTPS：https://%s:38443\n' "$host" "$host"
-    printf '外链测试目录：http://%s:38080/links/\n' "$host"
+    # 只输出已发布的 HTTPS 入口，容器内 HTTP 不作为外部访问地址。
+    printf '\nHTTPS：https://%s:38443\n' "$host"
+    printf '外链测试目录：https://%s:38443/links/\n' "$host"
     printf '外站需在浏览器和扫描器所在主机解析：%s -> %s\n' "$TARGET_WEB_EXTERNAL_HOST" "$host"
     printf '自签名证书会触发浏览器信任提示；可使用以下命令校验：\n'
     printf "curl --noproxy '*' --cacert %q %q\n" "$ROOT/certs/fullchain.pem" "https://$host:38443/healthz"

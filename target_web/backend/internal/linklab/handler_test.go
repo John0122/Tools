@@ -68,12 +68,13 @@ func TestLabRedirectAndPreflight(t *testing.T) {
 		}
 	}
 	r := httptest.NewRequest("OPTIONS", "/lab/rest", nil)
-	r.Header.Set("Origin", "http://localhost:38080")
+	// 预检使用唯一对外发布的 HTTPS 来源，与浏览器入口保持一致。
+	r.Header.Set("Origin", "https://localhost:38443")
 	r.Header.Set("Access-Control-Request-Method", "POST")
 	r.Header.Set("Access-Control-Request-Headers", "content-type")
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
-	if w.Code != 204 || w.Header().Get("Access-Control-Allow-Origin") != "http://localhost:38080" {
+	if w.Code != 204 || w.Header().Get("Access-Control-Allow-Origin") != "https://localhost:38443" {
 		t.Fatalf("preflight %d %v", w.Code, w.Header())
 	}
 	r.Header.Set("Access-Control-Request-Method", "DELETE")

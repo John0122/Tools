@@ -14,7 +14,7 @@ services:
       backend:
         condition: service_healthy
     ports:
-      - "38080:8080"
+      # 仅发布 HTTPS；容器内 8080 继续用于健康检查。
       - "38443:8443"
     volumes:
       # 目录只读挂载；使用启动脚本先生成证书，避免挂载空目录后反复重启。

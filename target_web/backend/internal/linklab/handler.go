@@ -52,10 +52,9 @@ func NewHandler(c Config) (*Handler, error) {
 		return nil, fmt.Errorf("主站访问地址必须是 IP")
 	}
 	h := &Handler{external: c.ExternalHost, origins: map[string]bool{}, connections: map[*websocket.Conn]struct{}{}}
+	// 浏览器只从对外发布的 HTTPS 入口访问；容器内 HTTP 不加入跨域来源。
 	for _, host := range []string{c.PrimaryHost, "127.0.0.1", "localhost", "::1", c.ExternalHost} {
-		for _, entry := range []struct{ scheme, port string }{{"http", "38080"}, {"https", "38443"}} {
-			h.origins[entry.scheme+"://"+net.JoinHostPort(host, entry.port)] = true
-		}
+		h.origins["https://"+net.JoinHostPort(host, "38443")] = true
 	}
 	var err error
 	h.schema, err = newSchema()

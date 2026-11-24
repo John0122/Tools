@@ -52,7 +52,8 @@ func TestWebSocketEchoOriginAndShutdown(t *testing.T) {
 	if resp == nil || resp.StatusCode != 403 {
 		t.Fatalf("bad Origin response %v %v", resp, err)
 	}
-	c, _, err = websocket.Dial(ctx, address, &websocket.DialOptions{HTTPHeader: http.Header{"Origin": []string{"http://localhost:38080"}}})
+	// 本机协议测试仍走临时监听器，浏览器来源沿用部署的 HTTPS 入口。
+	c, _, err = websocket.Dial(ctx, address, &websocket.DialOptions{HTTPHeader: http.Header{"Origin": []string{"https://localhost:38443"}}})
 	if err != nil {
 		t.Fatal(err)
 	}
